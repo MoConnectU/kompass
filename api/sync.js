@@ -5,7 +5,7 @@
 //   KV_REST_API_URL + KV_REST_API_TOKEN   oder
 //   UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN
 
-module.exports = async (req, res) => {
+export default async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store');
 
   const url = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
@@ -65,4 +65,4 @@ module.exports = async (req, res) => {
   } catch (e) {
     return res.status(500).json({ error: String((e && e.message) || e) });
   }
-};
+}
