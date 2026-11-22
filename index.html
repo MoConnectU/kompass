@@ -3,99 +3,192 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#0f1115">
+<meta name="theme-color" content="#EDF1F2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0E1A24" media="(prefers-color-scheme: dark)">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Kompass">
 <title>Kompass</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,400;7..72,500;7..72,600&family=Schibsted+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="manifest" href="/manifest.json">
 <link rel="icon" href="/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/icon-192.png">
 <style>
+/* Kompass – Seekarte & Logbuch */
 :root{
-  --bg:#0f1115; --card:#181b22; --card2:#1f232c; --line:#2a2f3a;
-  --text:#e9ecf1; --mute:#8b93a3; --accent:#7c9cff; --ok:#4cc38a; --warn:#f2b84b; --bad:#ef6b6b;
-  --r:14px;
+  --paper:#EDF1F2; --sheet:#F8FAFA; --ink:#14283A; --mute:#5D7080; --rule:#C9D5DA; --rule2:#DFE7EA;
+  --brass:#A87523; --brass-soft:#E9D9B8; --ok:#2E7D5B; --bad:#B4432F;
+  --serif:"Literata", Georgia, "Times New Roman", serif;
+  --sans:"Schibsted Grotesk", -apple-system, "Segoe UI", Roboto, sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --paper:#0E1A24; --sheet:#132330; --ink:#E4ECF0; --mute:#8DA1AF; --rule:#2A4053; --rule2:#1D3141;
+    --brass:#D7A64B; --brass-soft:#3A3220; --ok:#5DBB8E; --bad:#E2765F;
+    color-scheme:dark;
+  }
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{margin:0;background:var(--bg);color:var(--text);font:16px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
-body{padding-bottom:calc(76px + env(safe-area-inset-bottom))}
+html,body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.5 var(--sans)}
+body{padding-bottom:calc(84px + env(safe-area-inset-bottom))}
 button,input,select,textarea{font:inherit;color:inherit}
-button{cursor:pointer;border:0;background:none}
-.wrap{max-width:720px;margin:0 auto;padding:calc(14px + env(safe-area-inset-top)) 16px 24px}
-header.top{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
-.brand{font-weight:700;letter-spacing:.3px;font-size:18px;display:flex;align-items:center;gap:8px}
-.sync{width:9px;height:9px;border-radius:50%;background:var(--mute);display:inline-block}
-.sync.ok{background:var(--ok)}.sync.busy{background:var(--warn)}.sync.err{background:var(--bad)}
-.daynav{display:flex;align-items:center;gap:6px}
-.daynav button{padding:6px 10px;border-radius:10px;background:var(--card);color:var(--mute)}
-.daynav .lbl{font-weight:600;min-width:120px;text-align:center}
-.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px;margin-bottom:14px}
-.card h2{font-size:13px;text-transform:uppercase;letter-spacing:.8px;color:var(--mute);margin:0 0 10px;font-weight:600;display:flex;justify-content:space-between;align-items:center}
-.row{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line)}
-.row:first-of-type{border-top:0}
-.dot{width:10px;height:10px;border-radius:50%;flex:0 0 10px}
-.grow{flex:1;min-width:0}
-.title{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.small{font-size:13px;color:var(--mute)}
-.ib{width:34px;height:34px;border-radius:10px;background:var(--card2);color:var(--mute);display:inline-flex;align-items:center;justify-content:center;flex:0 0 34px}
-.ib:active{transform:scale(.95)}
-.chk{width:26px;height:26px;border-radius:50%;border:2px solid var(--line);flex:0 0 26px;display:inline-flex;align-items:center;justify-content:center;color:var(--ok)}
-.chk.on{background:var(--ok);border-color:var(--ok);color:#0f1115}
-.btn{padding:11px 16px;border-radius:12px;background:var(--card2);border:1px solid var(--line);font-weight:600}
-.btn.pri{background:var(--accent);border-color:var(--accent);color:#0b0d12}
-.btn.ok{background:var(--ok);border-color:var(--ok);color:#0b0d12}
-.btn.ghost{background:none}
+button{cursor:pointer;border:0;background:none;padding:0}
+:focus-visible{outline:2px solid var(--brass);outline-offset:2px;border-radius:6px}
+.wrap{max-width:640px;margin:0 auto;padding:calc(18px + env(safe-area-inset-top)) 20px 32px}
+
+/* Kopf: der Tag als Logbucheintrag */
+header.top{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;padding-bottom:14px;border-bottom:2px solid var(--ink);margin-bottom:22px}
+.dateline{min-width:0}
+.dateline .wd{font:500 14px/1.2 var(--sans);color:var(--mute);display:flex;align-items:center;gap:8px}
+.dateline h1{font:600 30px/1.15 var(--serif);margin:4px 0 0;letter-spacing:-.2px}
+.sync{width:8px;height:8px;border-radius:50%;background:var(--rule);display:inline-block}
+.sync.ok{background:var(--ok)}.sync.busy{background:var(--brass)}.sync.err{background:var(--bad)}
+.nav{display:flex;gap:4px;flex:0 0 auto}
+.nav button{width:38px;height:38px;border-radius:50%;border:1px solid var(--rule);color:var(--mute);font-size:18px;line-height:1}
+.nav button:hover{color:var(--ink);border-color:var(--ink)}
+.nav .today{width:auto;padding:0 12px;border-radius:19px;font-size:14px}
+
+/* Abschnitte */
+section{margin-bottom:30px}
+section > h2{font:600 19px/1.3 var(--serif);margin:0 0 4px;display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+section > h2 small{font:400 14px/1.3 var(--sans);color:var(--mute)}
+.hint{color:var(--mute);font-size:14px;margin:2px 0 10px}
+
+/* Eingabe */
+.add{background:var(--sheet);border:1px solid var(--rule);border-radius:12px;padding:6px 6px 10px}
+.add form{display:flex;gap:6px}
+.add input[type=text]{flex:1;border:0;background:none;padding:10px 10px;font-size:17px;outline:none;min-width:0}
+.add input::placeholder{color:var(--mute)}
+.chips{display:flex;gap:6px;flex-wrap:wrap;padding:2px 8px 0}
+.chip{padding:5px 11px 5px 9px;border-radius:999px;border:1px solid var(--rule);font-size:14px;display:inline-flex;align-items:center;gap:7px;color:var(--mute)}
+.chip.on{border-color:var(--ink);color:var(--ink);background:var(--paper)}
+
+/* Aufgabenliste */
+ol.tasks,ul.tasks{list-style:none;margin:0;padding:0}
+.task{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--rule2)}
+.task:last-child{border-bottom:0}
+.num{font:500 15px/1 var(--serif);color:var(--mute);width:22px;text-align:right;font-variant-numeric:tabular-nums;flex:0 0 22px}
+.pin{width:9px;height:9px;border-radius:50%;flex:0 0 9px;box-shadow:0 0 0 3px var(--paper)}
+.tbody{flex:1;min-width:0;cursor:pointer}
+.ttitle{font:400 17px/1.35 var(--serif);overflow-wrap:anywhere}
+.tmeta{font-size:13px;color:var(--mute);margin-top:2px;display:flex;gap:10px;flex-wrap:wrap}
+.tmeta .run{color:var(--brass);font-weight:600}
+.task.done .ttitle{color:var(--mute);text-decoration:line-through;text-decoration-color:var(--rule)}
+.chk{width:26px;height:26px;border-radius:50%;border:1.5px solid var(--rule);flex:0 0 26px;display:inline-flex;align-items:center;justify-content:center;color:var(--sheet);font-size:14px}
+.chk:hover{border-color:var(--ok)}
+.chk.on{background:var(--ok);border-color:var(--ok)}
+.mv{display:flex;flex-direction:column;gap:2px;flex:0 0 auto}
+.mv button{width:30px;height:20px;border-radius:5px;color:var(--mute);font-size:12px;line-height:1}
+.mv button:hover{background:var(--rule2);color:var(--ink)}
+.empty{color:var(--mute);font-size:15px;padding:10px 0;font-style:italic;font-family:var(--serif)}
+
+.later{border-top:1px dashed var(--rule);padding-top:14px}
+.later summary{cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:baseline;font:600 17px/1.3 var(--serif);color:var(--mute)}
+.later summary::-webkit-details-marker{display:none}
+.later[open] summary{color:var(--ink)}
+.later summary small{font:400 14px var(--sans)}
+
+/* Logbuch-Zeitleiste */
+.log{list-style:none;margin:6px 0 0;padding:0 0 0 0;position:relative}
+.log li{display:grid;grid-template-columns:96px 1fr auto;gap:12px;align-items:baseline;padding:7px 0 7px 18px;position:relative;font-size:15px}
+.log li::before{content:"";position:absolute;left:3px;top:0;bottom:0;width:1px;background:var(--rule)}
+.log li::after{content:"";position:absolute;left:0;top:14px;width:7px;height:7px;border-radius:50%;background:var(--c,var(--rule))}
+.log .tm{font-variant-numeric:tabular-nums;color:var(--mute)}
+.log .lt{font-family:var(--serif);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.log .du{font-variant-numeric:tabular-nums;color:var(--mute)}
+.log li.now .tm,.log li.now .du{color:var(--brass);font-weight:600}
+
+/* Knöpfe */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:10px 18px;border-radius:999px;border:1px solid var(--rule);font-weight:600;font-size:15px;background:var(--sheet)}
+.btn:hover{border-color:var(--ink)}
+.btn.pri{background:var(--ink);border-color:var(--ink);color:var(--paper)}
+.btn.ok{background:var(--ok);border-color:var(--ok);color:#fff}
+@media (prefers-color-scheme: dark){.btn.ok{color:#0E1A24}}
+.btn.quiet{border-color:transparent;background:none;color:var(--mute);font-weight:500}
 .btn.bad{color:var(--bad)}
+.btn.sm{padding:6px 14px;font-size:14px}
 .btn.block{width:100%}
+.add .btn.pri{width:44px;height:44px;padding:0;font-size:22px;font-weight:400}
+
+.banner{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 14px;margin-bottom:22px;border-left:3px solid var(--brass);background:var(--sheet);font-size:15px;border-radius:0 10px 10px 0}
+
 input[type=text],input[type=number],input[type=date],input[type=password],select,textarea{
-  width:100%;background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;outline:none}
-input:focus,textarea:focus,select:focus{border-color:var(--accent)}
-textarea{resize:vertical;min-height:70px}
-.addrow{display:flex;gap:8px}
-.chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
-.chip{padding:6px 10px;border-radius:999px;border:1px solid var(--line);background:var(--card2);font-size:13px;display:inline-flex;align-items:center;gap:6px}
-.chip.on{border-color:var(--text)}
-details summary{cursor:pointer;list-style:none}
-details summary::-webkit-details-marker{display:none}
-.empty{color:var(--mute);font-size:14px;padding:6px 0}
-.banner{background:#2a2414;border:1px solid #4a3d1b;color:var(--warn);border-radius:12px;padding:10px 12px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:14px}
-.tabbar{position:fixed;left:0;right:0;bottom:0;background:rgba(15,17,21,.96);backdrop-filter:blur(10px);border-top:1px solid var(--line);display:flex;justify-content:space-around;padding:8px 0 calc(8px + env(safe-area-inset-bottom));z-index:5}
-.tabbar button{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:11px;color:var(--mute);padding:4px 14px}
-.tabbar button.on{color:var(--text)}
-.tabbar svg{width:22px;height:22px}
-/* Fokus */
-.focus{min-height:calc(100vh - 170px);display:flex;flex-direction:column;justify-content:center;text-align:center;gap:18px}
-.focus .q{font-size:13px;letter-spacing:.8px;text-transform:uppercase;display:inline-flex;gap:8px;align-items:center;justify-content:center;color:var(--mute)}
-.focus .t{font-size:28px;font-weight:700;line-height:1.25;padding:0 6px}
-.focus .clock{font-size:56px;font-variant-numeric:tabular-nums;font-weight:300;letter-spacing:1px}
-.focus .clock.run{color:var(--accent)}
-.focus .acts{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
-.focus textarea{text-align:left;min-height:90px}
+  width:100%;background:var(--sheet);border:1px solid var(--rule);border-radius:10px;padding:10px 12px;outline:none}
+input:focus,textarea:focus,select:focus{border-color:var(--ink)}
+textarea{resize:vertical;min-height:80px;font-family:var(--serif);line-height:1.6}
+.field{margin-bottom:14px}
+.field label{display:block;font-size:14px;color:var(--mute);margin-bottom:5px}
+
+/* Fokus – der Kompass */
+.focus{min-height:calc(100vh - 140px);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:22px;padding-top:8px}
+.fq{font-size:15px;color:var(--mute);display:inline-flex;gap:8px;align-items:center}
+.ft{font:600 clamp(24px,6vw,32px)/1.25 var(--serif);max-width:22ch;margin:0;letter-spacing:-.2px}
+.dial{position:relative;width:min(78vw,300px);aspect-ratio:1}
+.dial svg{width:100%;height:100%;display:block;overflow:visible}
+.dial .tick{stroke:var(--rule)}
+.dial .tick.major{stroke:var(--mute)}
+.dial .track{stroke:var(--rule2)}
+.dial .prog{stroke:var(--brass);transition:stroke-dashoffset .9s linear}
+.dial .needle{fill:var(--brass)}
+.dial .north{fill:var(--ink)}
+.dial .readout{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+.dial .clock{font:300 clamp(40px,12vw,54px)/1 var(--sans);font-variant-numeric:tabular-nums;letter-spacing:.5px}
+.dial .state{font-size:14px;color:var(--mute)}
+.dial.run .clock{color:var(--brass)}
+.facts{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.focus textarea{max-width:480px;text-align:left}
+@media (prefers-reduced-motion: reduce){.dial .prog{transition:none}}
+
 /* Woche */
-.big{font-size:40px;font-weight:700;font-variant-numeric:tabular-nums}
-.bar{height:10px;background:var(--card2);border-radius:999px;overflow:hidden;margin-top:6px}
+.sum{font:600 34px/1.15 var(--serif);margin:0}
+.sum small{font:400 17px var(--sans);color:var(--mute)}
+.bar{height:6px;background:var(--rule2);border-radius:999px;overflow:hidden;margin-top:8px}
 .bar>i{display:block;height:100%;border-radius:999px}
-.days{display:flex;gap:6px;align-items:flex-end;height:120px;margin-top:8px}
-.days .d{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;height:100%;justify-content:flex-end}
-.days .stack{width:100%;max-width:34px;display:flex;flex-direction:column-reverse;border-radius:6px;overflow:hidden;background:var(--card2);min-height:3px}
+.qrow{padding:12px 0;border-bottom:1px solid var(--rule2)}
+.qrow:last-child{border-bottom:0}
+.qrow .top{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.qrow .name{font:500 17px var(--serif);display:inline-flex;align-items:center;gap:9px}
+.qrow .val{font-variant-numeric:tabular-nums;color:var(--mute);font-size:14px}
+.days{display:flex;gap:8px;align-items:flex-end;height:130px;margin-top:10px;border-bottom:1px solid var(--rule);padding-bottom:0}
+.days .d{flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;height:100%;justify-content:flex-end}
+.days .stack{width:100%;max-width:30px;display:flex;flex-direction:column-reverse;border-radius:4px 4px 0 0;overflow:hidden;min-height:2px;background:var(--rule2)}
 .days .stack i{display:block;width:100%}
-.lbl2{font-size:11px;color:var(--mute)}
-.log{font-variant-numeric:tabular-nums}
+.dl{display:flex;gap:8px;margin-top:6px}
+.dl span{flex:1;text-align:center;font-size:13px;color:var(--mute)}
+.dl span.today{color:var(--ink);font-weight:600}
+.dv{font-size:12px;color:var(--mute);font-variant-numeric:tabular-nums}
+.prompt{font:500 16px/1.4 var(--serif);margin:0 0 6px}
+
+/* Quests */
+.quest{padding:18px 0;border-bottom:1px solid var(--rule)}
+.quest:first-of-type{padding-top:6px}
+.quest .qhead{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.quest .qhead input{font:600 19px var(--serif);border:0;border-bottom:1px solid transparent;border-radius:0;background:none;padding:4px 0}
+.quest .qhead input:focus{border-bottom-color:var(--ink)}
+.palette{display:flex;gap:10px;flex-wrap:wrap}
+.palette button{width:26px;height:26px;border-radius:50%;box-shadow:inset 0 0 0 2px rgba(255,255,255,.35)}
+.palette button.on{outline:2px solid var(--ink);outline-offset:2px}
+.two{display:grid;grid-template-columns:1fr 130px;gap:12px}
+.arch{display:flex;align-items:center;gap:10px;padding:8px 0;color:var(--mute)}
+
+/* Navigation */
+.tabbar{position:fixed;left:0;right:0;bottom:0;background:var(--paper);border-top:1px solid var(--rule);z-index:5;padding:6px 0 calc(6px + env(safe-area-inset-bottom))}
+.tabbar .in{max-width:640px;margin:0 auto;display:flex;justify-content:space-around}
+.tabbar button{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:12px;color:var(--mute);padding:6px 16px;border-radius:10px;position:relative}
+.tabbar button.on{color:var(--ink);font-weight:600}
+.tabbar button.on::before{content:"";position:absolute;top:-7px;left:30%;right:30%;height:2px;background:var(--ink);border-radius:2px}
+.tabbar svg{width:22px;height:22px}
+
 /* Sheet */
-.sheet-bg{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:20;display:flex;align-items:flex-end;justify-content:center}
-.sheet{background:var(--card);border:1px solid var(--line);border-radius:18px 18px 0 0;width:100%;max-width:720px;padding:18px 16px calc(18px + env(safe-area-inset-bottom));max-height:90vh;overflow:auto}
-.sheet h3{margin:0 0 12px}
-.field{margin-bottom:12px}
-.field label{display:block;font-size:13px;color:var(--mute);margin-bottom:5px}
+.sheet-bg{position:fixed;inset:0;background:rgba(10,20,30,.45);z-index:20;display:flex;align-items:flex-end;justify-content:center}
+.sheet{background:var(--sheet);border-radius:18px 18px 0 0;width:100%;max-width:640px;padding:20px 20px calc(20px + env(safe-area-inset-bottom));max-height:90vh;overflow:auto}
+.sheet h3{font:600 21px var(--serif);margin:0 0 16px}
 .btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
-.palette{display:flex;gap:8px;flex-wrap:wrap}
-.palette button{width:28px;height:28px;border-radius:50%;border:2px solid transparent}
-.palette button.on{border-color:var(--text)}
-.qedit{border-top:1px solid var(--line);padding-top:12px;margin-top:12px}
-.qedit:first-of-type{border-top:0;padding-top:0;margin-top:0}
-.toast{position:fixed;left:50%;bottom:calc(90px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--card2);border:1px solid var(--line);padding:10px 14px;border-radius:12px;font-size:14px;z-index:30}
-@media (min-width:760px){.sheet-bg{align-items:center}.sheet{border-radius:18px}}
+.toast{position:fixed;left:50%;bottom:calc(96px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:10px 16px;border-radius:999px;font-size:14px;z-index:30;white-space:nowrap}
+@media (min-width:760px){.sheet-bg{align-items:center}.sheet{border-radius:18px}.dateline h1{font-size:36px}}
 </style>
 </head>
 <body>
@@ -110,7 +203,8 @@ details summary::-webkit-details-marker{display:none}
    ========================================================= */
 const LS_STATE = 'kompass-state-v1';
 const LS_CODE  = 'kompass-sync-code';
-const COLORS = ['#7c9cff','#4cc38a','#f2b84b','#ef6b6b','#c084fc','#2dd4bf','#f472b6','#94a3b8'];
+const COLORS = ['#2F6DB0','#2E8B66','#C8553D','#D69B1A','#7556A8','#1E8C9A','#B4497C','#6A7B88'];
+const OLD_COLORS = {'#7c9cff':'#2F6DB0','#4cc38a':'#2E8B66','#f2b84b':'#D69B1A','#ef6b6b':'#C8553D','#c084fc':'#7556A8','#2dd4bf':'#1E8C9A','#f472b6':'#B4497C','#94a3b8':'#6A7B88'};
 const MAX_QUESTS = 3;
 const WD = ['Mo','Di','Mi','Do','Fr','Sa','So'];
 
@@ -147,6 +241,7 @@ function loadState(){
   return emptyState();
 }
 let S = loadState();
+S.quests.forEach(q => { if (OLD_COLORS[q.color]) q.color = OLD_COLORS[q.color]; });
 const ui = { view:'heute', day: todayKey(), week: mondayOf(todayKey()), openOther:false };
 
 function saveLocal(){ try { localStorage.setItem(LS_STATE, JSON.stringify(S)); } catch(e){ toast('Speichern fehlgeschlagen'); } }
@@ -156,7 +251,7 @@ function commitQuiet(){ S.updatedAt = Date.now(); saveLocal(); schedulePush(); }
 const questById = id => S.quests.find(q => q.id === id);
 const activeQuests = () => S.quests.filter(q => !q.archived);
 const isQuestTask = t => { const q = t.questId && questById(t.questId); return !!(q && !q.archived); };
-const taskColor = t => { const q = t.questId && questById(t.questId); return q ? q.color : 'var(--line)'; };
+const taskColor = t => { const q = t.questId && questById(t.questId); return q ? q.color : 'var(--rule)'; };
 
 function spentMs(taskId){
   let ms = 0;
@@ -216,87 +311,130 @@ function pullOverdue(){
 
 /* ---------- Render ---------- */
 const ICONS = {
-  heute:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1"/><circle cx="4.5" cy="12" r="1"/><circle cx="4.5" cy="18" r="1"/></svg>',
-  fokus:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/></svg>',
-  woche:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 20V11M12 20V5M19 20v-6"/></svg>',
-  quests:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 3l2.6 5.6 6 .7-4.5 4.1 1.2 6L12 16.5 6.7 19.4l1.2-6L3.4 9.3l6-.7z"/></svg>',
+  heute:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6h1M4 12h1M4 18h1"/></svg>',
+  fokus:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 6l2 6-2 6-2-6z"/></svg>',
+  woche:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 20V11M12 20V5M19 20v-6"/></svg>',
+  quests:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M6 21V4M6 4h11l-2.5 4L17 12H6"/></svg>',
 };
 const TABS = [['heute','Heute'],['fokus','Fokus'],['woche','Woche'],['quests','Quests']];
+const WD_LONG = ['Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag','Sonntag'];
+const MONTHS = ['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
+function longDate(s){ const d = parseDk(s); return d.getDate() + '. ' + MONTHS[d.getMonth()]; }
 
 function render(){
-  $('#tabs').innerHTML = TABS.map(([k,l]) => `<button data-act="tab" data-v="${k}" class="${ui.view===k?'on':''}">${ICONS[k]}<span>${l}</span></button>`).join('');
-  const syncCls = syncState.code ? syncState.status : '';
-  const head = `<header class="top"><div class="brand"><span class="sync ${syncCls}" title="${esc(syncTitle())}"></span>Kompass</div>${headRight()}</header>`;
+  $('#tabs').innerHTML = '<div class="in">' + TABS.map(([k,l]) => `<button data-act="tab" data-v="${k}" class="${ui.view===k?'on':''}" ${ui.view===k?'aria-current="page"':''}>${ICONS[k]}<span>${l}</span></button>`).join('') + '</div>';
   let body = '';
   if (ui.view === 'heute') body = renderHeute();
   else if (ui.view === 'fokus') body = renderFokus();
   else if (ui.view === 'woche') body = renderWoche();
   else body = renderQuests();
-  $('#app').innerHTML = head + body;
+  $('#app').innerHTML = renderHead() + body;
 }
-function headRight(){
-  if (ui.view === 'heute') return `<div class="daynav"><button data-act="day" data-v="-1">‹</button><button class="lbl" data-act="day" data-v="0">${dayLabel(ui.day)}</button><button data-act="day" data-v="1">›</button></div>`;
-  if (ui.view === 'woche') return `<div class="daynav"><button data-act="week" data-v="-1">‹</button><button class="lbl" data-act="week" data-v="0">${weekLabel(ui.week)}</button><button data-act="week" data-v="1">›</button></div>`;
-  return '';
+function syncDot(){ return `<span class="sync ${syncState.code ? syncState.status : ''}" title="${esc(syncTitle())}"></span>`; }
+function renderHead(){
+  const t = todayKey();
+  if (ui.view === 'heute'){
+    const d = parseDk(ui.day);
+    const rel = ui.day === t ? 'Heute' : ui.day === addDays(t,1) ? 'Morgen' : ui.day === addDays(t,-1) ? 'Gestern' : '';
+    return `<header class="top"><div class="dateline"><div class="wd">${syncDot()}${rel ? rel + ', ' : ''}${WD_LONG[(d.getDay()+6)%7]}</div><h1>${longDate(ui.day)}</h1></div>
+      <div class="nav">${ui.day!==t?'<button class="today" data-act="day" data-v="0">Heute</button>':''}<button data-act="day" data-v="-1" aria-label="Vorheriger Tag">‹</button><button data-act="day" data-v="1" aria-label="Nächster Tag">›</button></div></header>`;
+  }
+  if (ui.view === 'woche'){
+    const cur = ui.week === mondayOf(t);
+    return `<header class="top"><div class="dateline"><div class="wd">${syncDot()}${cur ? 'Diese Woche' : 'Woche'}</div><h1>${weekLabel(ui.week)}</h1></div>
+      <div class="nav">${!cur?'<button class="today" data-act="week" data-v="0">Jetzt</button>':''}<button data-act="week" data-v="-1" aria-label="Vorherige Woche">‹</button><button data-act="week" data-v="1" aria-label="Nächste Woche">›</button></div></header>`;
+  }
+  if (ui.view === 'quests') return `<header class="top"><div class="dateline"><div class="wd">${syncDot()}Kompass</div><h1>Deine Quests</h1></div></header>`;
+  return `<header class="top" style="border:0;margin-bottom:0;padding-bottom:0"><div class="dateline"><div class="wd">${syncDot()}Fokus</div></div></header>`;
 }
 
 function taskRow(t, opts = {}){
   const running = S.activeTimer && S.activeTimer.taskId === t.id;
   const sp = spentMs(t.id);
   const meta = [];
-  if (running) meta.push('<span style="color:var(--accent)">● läuft</span>');
+  if (running) meta.push('<span class="run">Läuft</span>');
   if (sp > 0) meta.push(`<span class="live" data-task="${t.id}">${fmtDur(sp)}</span>`);
-  if (t.notes) meta.push('Notiz');
-  return `<div class="row">
-    <button class="chk ${t.done?'on':''}" data-act="done" data-id="${t.id}" aria-label="erledigt">${t.done?'✓':''}</button>
-    <span class="dot" style="background:${taskColor(t)}"></span>
-    <div class="grow" data-act="edit" data-id="${t.id}"><div class="title" style="${t.done?'color:var(--mute);text-decoration:line-through':''}">${esc(t.title)}</div>${meta.length?`<div class="small">${meta.join(' · ')}</div>`:''}</div>
-    ${opts.sort ? `<button class="ib" data-act="up" data-id="${t.id}" aria-label="hoch">↑</button><button class="ib" data-act="down" data-id="${t.id}" aria-label="runter">↓</button>` : ''}
-  </div>`;
+  if (t.notes) meta.push('<span>Mit Notiz</span>');
+  return `<li class="task ${t.done?'done':''}">
+    ${opts.num ? `<span class="num">${opts.num}</span>` : ''}
+    <span class="pin" style="background:${taskColor(t)}"></span>
+    <div class="tbody" data-act="edit" data-id="${t.id}"><div class="ttitle">${esc(t.title)}</div>${meta.length?`<div class="tmeta">${meta.join('')}</div>`:''}</div>
+    ${opts.sort ? `<div class="mv"><button data-act="up" data-id="${t.id}" aria-label="Nach oben">▲</button><button data-act="down" data-id="${t.id}" aria-label="Nach unten">▼</button></div>` : ''}
+    <button class="chk ${t.done?'on':''}" data-act="done" data-id="${t.id}" aria-label="${t.done?'Wieder öffnen':'Erledigt'}">${t.done?'✓':''}</button>
+  </li>`;
 }
 
-let addQuest = null; // gewählte Quest im Eingabefeld
+let addQuest = null;
 function renderHeute(){
   const g = groups(ui.day);
   const t = todayKey();
   const overdue = S.tasks.filter(x => !x.done && x.date < t).length;
   const aq = activeQuests();
   if (addQuest && !aq.find(q => q.id === addQuest)) addQuest = null;
+  const otherOpen = ui.openOther || aq.length === 0;
   let h = '';
-  if (ui.day === t && overdue) h += `<div class="banner"><span>${overdue} offene Aufgabe${overdue>1?'n':''} von früheren Tagen</span><button class="btn" data-act="overdue">Auf heute holen</button></div>`;
+  if (ui.day === t && overdue) h += `<div class="banner"><span>${overdue} offene Aufgabe${overdue>1?'n':''} von früheren Tagen</span><button class="btn sm" data-act="overdue">Auf heute holen</button></div>`;
 
-  h += `<div class="card"><form class="addrow" data-form="add"><input type="text" id="addInput" placeholder="Neue Aufgabe für ${dayLabel(ui.day)}…" autocomplete="off"><button class="btn pri" type="submit">+</button></form>
-    <div class="chips">${aq.map(q => `<button class="chip ${addQuest===q.id?'on':''}" data-act="addq" data-id="${q.id}"><span class="dot" style="background:${q.color}"></span>${esc(q.name)}</button>`).join('')}
-    <button class="chip ${addQuest===null?'on':''}" data-act="addq" data-id=""><span class="dot" style="background:var(--line)"></span>Ohne Quest</button></div>
-    ${aq.length===0 ? '<div class="small" style="margin-top:8px">Tipp: Lege unter „Quests“ zuerst deine 1–3 großen Ziele an.</div>' : ''}</div>`;
+  h += `<section class="add"><form data-form="add"><input type="text" id="addInput" placeholder="Was steht an?" autocomplete="off" aria-label="Neue Aufgabe"><button class="btn pri" type="submit" aria-label="Aufgabe hinzufügen">+</button></form>
+    <div class="chips">${aq.map(q => `<button class="chip ${addQuest===q.id?'on':''}" data-act="addq" data-id="${q.id}"><span class="pin" style="background:${q.color};box-shadow:none"></span>${esc(q.name)}</button>`).join('')}
+    <button class="chip ${addQuest===null?'on':''}" data-act="addq" data-id="">Ohne Quest</button></div></section>`;
+  if (!aq.length) h += `<p class="hint">Lege unter Quests zuerst deine ein bis drei großen Ziele an.</p>`;
 
-  h += `<div class="card"><h2><span>Quest-Aufgaben</span>${g.quest.length && ui.day===t ? '<button class="btn pri" data-act="tab" data-v="fokus" style="padding:6px 12px;font-size:13px">Fokus starten</button>' : ''}</h2>
-    ${g.quest.length ? g.quest.map(x => taskRow(x,{sort:true})).join('') : '<div class="empty">Keine offenen Quest-Aufgaben.</div>'}</div>`;
+  h += `<section style="margin-top:26px"><h2><span>Reihenfolge</span>${g.quest.length && ui.day===t ? '<button class="btn pri sm" data-act="tab" data-v="fokus">Fokus starten</button>' : ''}</h2>
+    ${g.quest.length ? `<ol class="tasks">${g.quest.map((x,i) => taskRow(x,{sort:true,num:i+1})).join('')}</ol>` : '<p class="empty">Keine offenen Quest-Aufgaben.</p>'}</section>`;
 
-  h += `<div class="card"><details ${(ui.openOther || aq.length===0)?'open':''}><summary data-act="toggleOther"><h2 style="margin:0"><span>Ohne Quest · erst abends (${g.other.length})</span><span>${(ui.openOther || aq.length===0)?'▾':'▸'}</span></h2></summary>
-    <div style="margin-top:8px">${g.other.length ? g.other.map(x => taskRow(x,{sort:true})).join('') : '<div class="empty">Nichts offen.</div>'}</div></details></div>`;
+  h += `<section><details class="later" ${otherOpen?'open':''}><summary data-act="toggleOther"><span>Später am Abend</span><small>${g.other.length} ohne Quest ${otherOpen?'▴':'▾'}</small></summary>
+    ${g.other.length ? `<ul class="tasks" style="margin-top:6px">${g.other.map(x => taskRow(x,{sort:true})).join('')}</ul>` : '<p class="empty">Nichts offen.</p>'}</details></section>`;
 
   // Done-Liste
   const daySessions = S.sessions.filter(s => dk(new Date(s.start)) === ui.day).sort((a,b) => a.start - b.start);
   let questMs = 0, allMs = 0;
   for (const s of daySessions){ const d = s.end - s.start; allMs += d; if (sessionIsQuest(s)) questMs += d; }
-  if (S.activeTimer && dk(new Date(S.activeTimer.start)) === ui.day){
+  const live = S.activeTimer && dk(new Date(S.activeTimer.start)) === ui.day;
+  if (live){
     const d = Date.now() - S.activeTimer.start; allMs += d;
     const at = S.tasks.find(x => x.id === S.activeTimer.taskId); if (at && isQuestTask(at)) questMs += d;
   }
-  h += `<div class="card"><h2><span>Done-Liste (${g.done.length})</span><span style="text-transform:none;letter-spacing:0">Quest Hours ${fmtH(questMs)}</span></h2>
-    ${g.done.length ? g.done.map(x => taskRow(x)).join('') : '<div class="empty">Noch nichts erledigt – das kommt.</div>'}</div>`;
+  h += `<section><h2><span>Erledigt</span><small>${fmtH(questMs)} Quest-Zeit</small></h2>
+    ${g.done.length ? `<ul class="tasks">${g.done.map(x => taskRow(x)).join('')}</ul>` : '<p class="empty">Noch nichts erledigt.</p>'}</section>`;
 
   // Logbuch
-  h += `<div class="card"><h2><span>Logbuch</span><span style="text-transform:none;letter-spacing:0">gesamt ${fmtDur(allMs)}</span></h2>
-    ${daySessions.length || (S.activeTimer && dk(new Date(S.activeTimer.start))===ui.day) ? daySessions.map(s => {
-      const t2 = S.tasks.find(x => x.id === s.taskId); const q = questById(s.questId);
-      return `<div class="row log"><span class="dot" style="background:${q && !q.archived ? q.color : 'var(--line)'}"></span><span class="small" style="width:92px">${hm(s.start)}–${hm(s.end)}</span><div class="grow title">${esc(t2 ? t2.title : s.title)}</div><span class="small">${fmtDur(s.end-s.start)}</span></div>`;
-    }).join('') + (S.activeTimer && dk(new Date(S.activeTimer.start))===ui.day ? (() => { const at = S.tasks.find(x => x.id === S.activeTimer.taskId); return `<div class="row log"><span class="dot" style="background:var(--accent)"></span><span class="small" style="width:92px">${hm(S.activeTimer.start)}–jetzt</span><div class="grow title">${esc(at?at.title:'')}</div><span class="small live" data-task="${S.activeTimer.taskId}">${fmtDur(Date.now()-S.activeTimer.start)}</span></div>`; })() : '')
-    : '<div class="empty">Hier erscheint die tatsächlich gearbeitete Zeit, sobald du im Fokus den Timer nutzt.</div>'}</div>`;
+  let log = daySessions.map(s => {
+    const t2 = S.tasks.find(x => x.id === s.taskId); const q = questById(s.questId);
+    return `<li style="--c:${q ? q.color : 'var(--rule)'}"><span class="tm">${hm(s.start)}–${hm(s.end)}</span><span class="lt">${esc(t2 ? t2.title : s.title)}</span><span class="du">${fmtDur(s.end-s.start)}</span></li>`;
+  }).join('');
+  if (live){
+    const at = S.tasks.find(x => x.id === S.activeTimer.taskId);
+    log += `<li class="now" style="--c:var(--brass)"><span class="tm">${hm(S.activeTimer.start)}–jetzt</span><span class="lt">${esc(at?at.title:'')}</span><span class="du live" data-seg="1">${fmtDur(Date.now()-S.activeTimer.start)}</span></li>`;
+  }
+  h += `<section><h2><span>Logbuch</span><small>${fmtDur(allMs)} gearbeitet</small></h2>
+    ${log ? `<ul class="log">${log}</ul>` : '<p class="empty">Hier erscheint deine echte Arbeitszeit, sobald du im Fokus den Timer startest.</p>'}</section>`;
   return h;
 }
 function sessionIsQuest(s){ return !!(s.questId && questById(s.questId)); }
+
+/* Kompass-Ring: eine Umdrehung = 60 Minuten */
+const DIAL_R = 130, DIAL_C = 2 * Math.PI * DIAL_R;
+function dialSvg(ms){
+  let ticks = '';
+  for (let i = 0; i < 60; i++){
+    const a = i * 6 * Math.PI / 180, major = i % 5 === 0;
+    const r1 = 146, r2 = major ? 158 : 153;
+    ticks += `<line class="tick ${major?'major':''}" x1="${(Math.sin(a)*r1).toFixed(1)}" y1="${(-Math.cos(a)*r1).toFixed(1)}" x2="${(Math.sin(a)*r2).toFixed(1)}" y2="${(-Math.cos(a)*r2).toFixed(1)}" stroke-width="${major?2:1}"/>`;
+  }
+  const frac = (ms % 3600000) / 3600000, ang = frac * 2 * Math.PI;
+  return `<svg viewBox="-170 -170 340 340" aria-hidden="true">${ticks}
+    <path class="north" d="M0 -168 L6 -160 L-6 -160 Z"/>
+    <circle class="track" r="${DIAL_R}" fill="none" stroke-width="5"/>
+    <circle class="prog" r="${DIAL_R}" fill="none" stroke-width="5" stroke-linecap="round" transform="rotate(-90)" stroke-dasharray="${DIAL_C.toFixed(1)}" stroke-dashoffset="${(DIAL_C*(1-frac)).toFixed(1)}"/>
+    <circle class="needle" r="7" cx="${(Math.sin(ang)*DIAL_R).toFixed(1)}" cy="${(-Math.cos(ang)*DIAL_R).toFixed(1)}"/></svg>`;
+}
+function updateDial(el, ms){
+  const frac = (ms % 3600000) / 3600000, ang = frac * 2 * Math.PI;
+  const p = el.querySelector('.prog'), n = el.querySelector('.needle');
+  if (p) p.setAttribute('stroke-dashoffset', (DIAL_C*(1-frac)).toFixed(1));
+  if (n){ n.setAttribute('cx', (Math.sin(ang)*DIAL_R).toFixed(1)); n.setAttribute('cy', (-Math.cos(ang)*DIAL_R).toFixed(1)); }
+}
 
 function renderFokus(){
   const q = focusQueue();
@@ -305,22 +443,24 @@ function renderFokus(){
   if (!cur) cur = q[0] || null;
   if (!cur){
     const doneToday = groups(todayKey()).done.length;
-    return `<div class="focus"><div class="t">${doneToday ? 'Alles erledigt für heute.' : 'Keine Aufgaben für heute.'}</div>
-      <div class="small">${doneToday ? doneToday + ' Aufgaben auf der Done-Liste.' : 'Plane zuerst deinen Tag unter „Heute“.'}</div>
-      <div class="acts"><button class="btn" data-act="tab" data-v="heute">Zu Heute</button></div></div>`;
+    return `<div class="focus"><div class="dial">${dialSvg(0)}<div class="readout"><span class="state">${doneToday ? doneToday + ' erledigt' : 'Kein Kurs gesetzt'}</span></div></div>
+      <p class="ft">${doneToday ? 'Alles erledigt für heute.' : 'Für heute ist noch nichts geplant.'}</p>
+      <button class="btn" data-act="tab" data-v="heute">${doneToday ? 'Zur Tagesübersicht' : 'Tag planen'}</button></div>`;
   }
   const quest = questById(cur.questId);
   const running = S.activeTimer && S.activeTimer.taskId === cur.id;
+  const sp = spentMs(cur.id);
   return `<div class="focus">
-    <div class="q"><span class="dot" style="background:${taskColor(cur)}"></span>${quest && !quest.archived ? esc(quest.name) : 'Ohne Quest'}</div>
-    <div class="t">${esc(cur.title)}</div>
-    <div class="clock ${running?'run':''} live-clock" data-task="${cur.id}">${fmtClock(spentMs(cur.id))}</div>
-    <div class="acts">
-      ${running ? `<button class="btn" data-act="pause">Pause</button>` : `<button class="btn pri" data-act="start" data-id="${cur.id}">Start</button>`}
-      <button class="btn ok" data-act="complete" data-id="${cur.id}">Erledigt ✓</button>
+    <div class="fq"><span class="pin" style="background:${taskColor(cur)};box-shadow:none"></span>${quest && !quest.archived ? esc(quest.name) : 'Ohne Quest'}</div>
+    <h1 class="ft">${esc(cur.title)}</h1>
+    <div class="dial ${running?'run':''}" data-dial="${cur.id}">${dialSvg(sp)}
+      <div class="readout"><span class="clock live-clock" data-task="${cur.id}">${fmtClock(sp)}</span><span class="state">${running ? 'läuft' : (sp ? 'pausiert' : 'bereit')}</span></div></div>
+    <div class="facts">
+      ${running ? `<button class="btn" data-act="pause">Pausieren</button>` : `<button class="btn pri" data-act="start" data-id="${cur.id}">${sp ? 'Weiter' : 'Starten'}</button>`}
+      <button class="btn ok" data-act="complete" data-id="${cur.id}">Erledigt</button>
     </div>
-    <textarea placeholder="Notizen zu dieser Aufgabe…" data-notes="${cur.id}">${esc(cur.notes)}</textarea>
-    <div><button class="btn ghost small" data-act="skip" data-id="${cur.id}">Später (ans Ende)</button></div>
+    <textarea placeholder="Notizen zu dieser Aufgabe" data-notes="${cur.id}" aria-label="Notizen">${esc(cur.notes)}</textarea>
+    <button class="btn quiet sm" data-act="skip" data-id="${cur.id}">Ans Ende der Liste schieben</button>
   </div>`;
 }
 
@@ -344,60 +484,62 @@ function renderWoche(){
   const qs = S.quests.filter(q => !q.archived || st.per[q.id]);
   const goal = activeQuests().reduce((a,q) => a + (Number(q.weeklyGoalH)||0), 0);
   const pct = goal ? Math.min(100, Math.max(st.quest ? 1.5 : 0, hours(st.quest)/goal*100)) : 0;
+  const gl = String(goal).replace('.',',');
   const maxDay = Math.max(1, ...st.perDay.map(o => Object.values(o).reduce((a,b)=>a+b,0)));
-  let h = `<div class="card"><h2><span>Quest Hours</span><span style="text-transform:none;letter-spacing:0">${st.done} erledigt</span></h2>
-    <div class="big">${fmtH(st.quest)}${goal ? `<span class="small" style="font-size:16px;font-weight:400"> / ${String(goal).replace('.',',')} h Ziel</span>` : ''}</div>
-    ${goal ? `<div class="bar"><i style="width:${pct}%;background:var(--accent)"></i></div>` : '<div class="small">Lege bei deinen Quests ein Wochenziel in Stunden fest (Input-Ziel).</div>'}
-    <div class="small" style="margin-top:8px">Gesamt gearbeitet: ${fmtH(st.all)} · davon ${st.all ? Math.round(st.quest/st.all*100) : 0} % für Quests</div></div>`;
+  let h = `<section><p class="sum">${fmtH(st.quest)}${goal ? ` <small>von ${gl} h Quest-Zeit</small>` : ' <small>Quest-Zeit</small>'}</p>
+    ${goal ? `<div class="bar"><i style="width:${pct}%;background:var(--ink)"></i></div>` : '<p class="hint">Gib deinen Quests ein Wochenziel in Stunden.</p>'}
+    <p class="hint" style="margin-top:10px">${fmtH(st.all)} insgesamt gearbeitet, davon ${st.all ? Math.round(st.quest/st.all*100) : 0} % für Quests. ${st.done} Aufgabe${st.done===1?'':'n'} erledigt.</p></section>`;
 
-  h += `<div class="card"><h2>Pro Quest</h2>${qs.length ? qs.map(q => {
-      const ms = st.per[q.id]||0, g = Number(q.weeklyGoalH)||0, p = g ? Math.min(100, hours(ms)/g*100) : (ms?100:0);
-      return `<div style="margin-bottom:12px"><div style="display:flex;justify-content:space-between"><span><span class="dot" style="display:inline-block;background:${q.color};margin-right:6px"></span>${esc(q.name)}</span><span class="small">${fmtH(ms)}${g?` / ${String(g).replace('.',',')} h`:''}</span></div><div class="bar"><i style="width:${p}%;background:${q.color}"></i></div></div>`;
-    }).join('') : '<div class="empty">Noch keine Quests.</div>'}</div>`;
+  h += `<section><h2>Pro Quest</h2>${qs.length ? qs.map(q => {
+      const ms = st.per[q.id]||0, g = Number(q.weeklyGoalH)||0, p = g ? Math.min(100, Math.max(ms?1.5:0, hours(ms)/g*100)) : (ms?100:0);
+      return `<div class="qrow"><div class="top"><span class="name"><span class="pin" style="background:${q.color};box-shadow:none"></span>${esc(q.name)}</span><span class="val">${fmtH(ms)}${g?` von ${String(g).replace('.',',')} h`:''}</span></div><div class="bar"><i style="width:${p}%;background:${q.color}"></i></div></div>`;
+    }).join('') : '<p class="empty">Noch keine Quests.</p>'}</section>`;
 
-  h += `<div class="card"><h2>Tage</h2><div class="days">${st.perDay.map((o,i) => {
+  h += `<section><h2>Tage</h2><div class="days">${st.perDay.map(o => {
       const tot = Object.values(o).reduce((a,b)=>a+b,0);
-      const segs = Object.entries(o).map(([k,ms]) => `<i style="height:${ms/maxDay*96}px;background:${k==='_'?'var(--line)':(questById(k)||{}).color}"></i>`).join('');
-      return `<div class="d"><span class="lbl2">${fmtShort(tot)}</span><div class="stack">${segs}</div><span class="lbl2" style="${st.days[i]===todayKey()?'color:var(--text)':''}">${WD[i]}</span></div>`;
-    }).join('')}</div></div>`;
+      const segs = Object.entries(o).map(([k,ms]) => `<i style="height:${Math.max(2, ms/maxDay*100)}px;background:${k==='_'?'var(--rule)':(questById(k)||{}).color}"></i>`).join('');
+      return `<div class="d"><span class="dv">${fmtShort(tot)}</span><div class="stack">${segs}</div></div>`;
+    }).join('')}</div><div class="dl">${st.days.map((d,i) => `<span class="${d===todayKey()?'today':''}">${WD[i]}</span>`).join('')}</div></section>`;
 
-  // Verlauf der letzten 8 Wochen
   const hist = Array.from({length:8}, (_,i) => addDays(ui.week, -7*(7-i))).map(m => ({ m, q: weekStats(m).quest }));
   const maxH = Math.max(1, ...hist.map(x => x.q));
-  h += `<div class="card"><h2>Verlauf Quest Hours</h2><div class="days" style="height:90px">${hist.map(x => `<div class="d"><span class="lbl2">${fmtShort(x.q)}</span><div class="stack"><i style="height:${x.q/maxH*60}px;background:${x.m===ui.week?'var(--accent)':'#3a4255'}"></i></div><span class="lbl2">${parseDk(x.m).getDate()}.${parseDk(x.m).getMonth()+1}.</span></div>`).join('')}</div></div>`;
+  h += `<section><h2>Letzte acht Wochen</h2><div class="days" style="height:96px">${hist.map(x => `<div class="d"><span class="dv">${fmtShort(x.q)}</span><div class="stack"><i style="height:${Math.max(2, x.q/maxH*64)}px;background:${x.m===ui.week?'var(--ink)':'var(--rule)'}"></i></div></div>`).join('')}</div>
+    <div class="dl">${hist.map(x => `<span class="${x.m===ui.week?'today':''}">${parseDk(x.m).getDate()}.${parseDk(x.m).getMonth()+1}.</span>`).join('')}</div></section>`;
 
   const r = S.reflections[ui.week] || {};
-  h += `<div class="card"><h2><span>Wochen-Reflexion</span><span style="text-transform:none;letter-spacing:0">${r.savedAt ? 'gespeichert' : 'ca. 20 Min.'}</span></h2>
-    <div class="field"><label>Was lief gut?</label><textarea data-refl="good">${esc(r.good)}</textarea></div>
-    <div class="field"><label>Was lief schlecht – und warum?</label><textarea data-refl="bad">${esc(r.bad)}</textarea></div>
-    <div class="field"><label>Was ändere ich nächste Woche konkret?</label><textarea data-refl="improve">${esc(r.improve)}</textarea></div>
-    <div class="field"><label>Passen Ziele und Alltag zusammen? (vertikale Kohärenz)</label><textarea data-refl="coherence">${esc(r.coherence)}</textarea></div>
-    <div class="small">Wird automatisch gespeichert.</div></div>`;
+  h += `<section><h2><span>Rückblick</span><small>${r.savedAt ? 'Gespeichert' : 'etwa 20 Minuten'}</small></h2>
+    <div class="field"><p class="prompt">Was lief gut?</p><textarea data-refl="good">${esc(r.good)}</textarea></div>
+    <div class="field"><p class="prompt">Was lief schlecht, und warum?</p><textarea data-refl="bad">${esc(r.bad)}</textarea></div>
+    <div class="field"><p class="prompt">Was ändere ich nächste Woche konkret?</p><textarea data-refl="improve">${esc(r.improve)}</textarea></div>
+    <div class="field"><p class="prompt">Passen meine Ziele und mein Alltag noch zusammen?</p><textarea data-refl="coherence">${esc(r.coherence)}</textarea></div>
+    <p class="hint">Wird beim Tippen gespeichert.</p></section>`;
   return h;
 }
 
 function renderQuests(){
   const aq = activeQuests(), arch = S.quests.filter(q => q.archived);
-  let h = `<div class="card"><h2><span>Aktive Quests (${aq.length}/${MAX_QUESTS})</span></h2>
-    <div class="small" style="margin-bottom:12px">Deine großen Ziele für dieses Quartal. Jede Aufgabe gehört zu einer Quest – oder bewusst zu keiner. Das Wochenziel misst Input (Stunden), nicht Output.</div>
-    ${aq.map(q => `<div class="qedit">
-      <div class="field"><label>Name</label><input type="text" value="${esc(q.name)}" data-q="${q.id}" data-k="name"></div>
-      <div class="field"><label>Ziel / warum (optional)</label><input type="text" value="${esc(q.goal||'')}" data-q="${q.id}" data-k="goal" placeholder="z. B. 50 zahlende Kunden bis 31.3."></div>
-      <div class="field"><label>Input-Ziel pro Woche (Stunden)</label><input type="number" min="0" step="0.5" inputmode="decimal" value="${esc(q.weeklyGoalH ?? '')}" data-q="${q.id}" data-k="weeklyGoalH"></div>
-      <div class="field"><label>Farbe</label><div class="palette">${COLORS.map(c => `<button style="background:${c}" class="${q.color===c?'on':''}" data-act="qcolor" data-id="${q.id}" data-c="${c}" aria-label="Farbe"></button>`).join('')}</div></div>
-      <button class="btn ghost small" data-act="qarch" data-id="${q.id}">Archivieren</button>
-    </div>`).join('')}
-    <button class="btn ${aq.length?'':'pri'} block" style="margin-top:12px" data-act="qadd">+ Quest hinzufügen</button>
-    ${aq.length >= MAX_QUESTS ? '<div class="small" style="margin-top:8px;color:var(--warn)">Empfehlung: höchstens 3 Quests gleichzeitig – sonst verliert der Fokus seine Wirkung.</div>' : ''}</div>`;
-  if (arch.length) h += `<div class="card"><h2>Archiv</h2>${arch.map(q => `<div class="row"><span class="dot" style="background:${q.color}"></span><div class="grow title">${esc(q.name)}</div><button class="btn ghost small" data-act="qrestore" data-id="${q.id}">Reaktivieren</button></div>`).join('')}</div>`;
+  let h = `<p class="hint" style="margin-top:-8px;margin-bottom:8px">Höchstens drei große Ziele für dieses Quartal. Das Wochenziel misst Stunden, die du investierst, nicht das Ergebnis.</p>
+    <section>${aq.map(q => `<div class="quest">
+      <div class="qhead"><span class="pin" style="background:${q.color};box-shadow:none;width:12px;height:12px;flex-basis:12px"></span><input type="text" value="${esc(q.name)}" data-q="${q.id}" data-k="name" aria-label="Name der Quest"></div>
+      <div class="two">
+        <div class="field"><label>Woran merkst du, dass sie geschafft ist?</label><input type="text" value="${esc(q.goal||'')}" data-q="${q.id}" data-k="goal" placeholder="z. B. 10 Cafés als Kunden bis 31.3."></div>
+        <div class="field"><label>Stunden pro Woche</label><input type="number" min="0" step="0.5" inputmode="decimal" value="${esc(q.weeklyGoalH ?? '')}" data-q="${q.id}" data-k="weeklyGoalH"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+        <div class="palette" role="group" aria-label="Farbe">${COLORS.map(c => `<button style="background:${c}" class="${q.color===c?'on':''}" data-act="qcolor" data-id="${q.id}" data-c="${c}" aria-label="Farbe wählen"></button>`).join('')}</div>
+        <button class="btn quiet sm" data-act="qarch" data-id="${q.id}">Archivieren</button>
+      </div></div>`).join('')}
+    <div style="margin-top:16px"><button class="btn ${aq.length?'':'pri'} block" data-act="qadd">Quest hinzufügen</button></div>
+    ${aq.length >= MAX_QUESTS ? '<p class="hint" style="margin-top:10px">Mehr als drei Quests gleichzeitig verwässern den Fokus.</p>' : ''}</section>`;
+  if (arch.length) h += `<section><h2>Archiv</h2>${arch.map(q => `<div class="arch"><span class="pin" style="background:${q.color};box-shadow:none"></span><span style="flex:1;font-family:var(--serif)">${esc(q.name)}</span><button class="btn quiet sm" data-act="qrestore" data-id="${q.id}">Reaktivieren</button></div>`).join('')}</section>`;
 
-  h += `<div class="card"><h2>Sync Handy ↔ PC</h2>
-    <div class="small" style="margin-bottom:10px">Gib auf allen Geräten denselben geheimen Sync-Code ein (mind. 8 Zeichen). Wer den Code kennt, sieht deine Daten – also wie ein Passwort behandeln.</div>
+  h += `<section><h2>Sync zwischen Handy und PC</h2>
+    <p class="hint">Gib auf allen Geräten denselben geheimen Code ein, mindestens 8 Zeichen. Wer den Code kennt, sieht deine Daten.</p>
     ${syncState.code
-      ? `<div class="small" style="margin-bottom:10px">Status: <b style="color:var(--text)">${esc(syncTitle())}</b></div><div class="btns"><button class="btn" data-act="syncnow">Jetzt synchronisieren</button><button class="btn ghost bad" data-act="syncoff">Trennen</button></div>`
-      : `<form class="addrow" data-form="sync"><input type="password" id="syncInput" placeholder="Sync-Code" autocomplete="off"><button class="btn pri" type="submit">Verbinden</button></form>`}
-  </div>
-  <div class="card"><h2>Daten</h2><div class="btns"><button class="btn" data-act="export">Backup exportieren</button><label class="btn" style="display:inline-block">Backup importieren<input type="file" accept="application/json" id="importFile" style="display:none"></label></div></div>`;
+      ? `<p style="margin:0 0 10px">${syncDot()} ${esc(syncTitle())}</p><div class="btns"><button class="btn" data-act="syncnow">Jetzt synchronisieren</button><button class="btn quiet bad" data-act="syncoff">Trennen</button></div>`
+      : `<form data-form="sync" style="display:flex;gap:8px"><input type="password" id="syncInput" placeholder="Sync-Code" autocomplete="off"><button class="btn pri" type="submit">Verbinden</button></form>`}
+  </section>
+  <section><h2>Daten</h2><div class="btns"><button class="btn" data-act="export">Backup exportieren</button><label class="btn" style="cursor:pointer">Backup importieren<input type="file" accept="application/json" id="importFile" style="display:none"></label></div></section>`;
   return h;
 }
 
@@ -405,17 +547,17 @@ function renderQuests(){
 function openEdit(id){
   const t = S.tasks.find(x => x.id === id); if (!t) return;
   const opts = `<option value="">Ohne Quest</option>` + S.quests.filter(q => !q.archived || q.id === t.questId).map(q => `<option value="${q.id}" ${q.id===t.questId?'selected':''}>${esc(q.name)}</option>`).join('');
-  $('#sheet').innerHTML = `<div class="sheet-bg" data-act="closeSheet"><div class="sheet" data-stop>
-    <h3>Aufgabe</h3>
+  $('#sheet').innerHTML = `<div class="sheet-bg" data-act="closeSheet"><div class="sheet" data-stop role="dialog" aria-label="Aufgabe bearbeiten">
+    <h3>Aufgabe bearbeiten</h3>
     <div class="field"><label>Titel</label><input type="text" id="eTitle" value="${esc(t.title)}"></div>
-    <div class="field"><label>Quest</label><select id="eQuest">${opts}</select></div>
-    <div class="field"><label>Tag</label><input type="date" id="eDate" value="${t.date}"></div>
+    <div class="two"><div class="field"><label>Quest</label><select id="eQuest">${opts}</select></div>
+    <div class="field"><label>Tag</label><input type="date" id="eDate" value="${t.date}"></div></div>
     <div class="field"><label>Notizen</label><textarea id="eNotes">${esc(t.notes)}</textarea></div>
-    <div class="small" style="margin-bottom:10px">Investierte Zeit: ${fmtDur(spentMs(t.id))}</div>
+    <p class="hint">Investierte Zeit: ${fmtDur(spentMs(t.id))}</p>
     <div class="btns">
       <button class="btn pri" data-act="eSave" data-id="${t.id}">Speichern</button>
       ${t.done ? '' : `<button class="btn" data-act="eTomorrow" data-id="${t.id}">Auf morgen</button><button class="btn" data-act="eFocus" data-id="${t.id}">Jetzt fokussieren</button>`}
-      <button class="btn ghost bad" data-act="eDel" data-id="${t.id}">Löschen</button>
+      <button class="btn quiet bad" data-act="eDel" data-id="${t.id}">Löschen</button>
     </div></div></div>`;
 }
 const closeSheet = () => { $('#sheet').innerHTML = ''; };
@@ -543,10 +685,9 @@ document.addEventListener('change', e => {
 setInterval(() => {
   if (!S.activeTimer) return;
   document.querySelectorAll('.live-clock').forEach(el => { el.textContent = fmtClock(spentMs(el.dataset.task)); });
+  document.querySelectorAll('[data-dial]').forEach(el => updateDial(el, spentMs(el.dataset.dial)));
   document.querySelectorAll('.live').forEach(el => {
-    const tid = el.dataset.task;
-    el.textContent = el.closest('.log') && !el.closest('.row').querySelector('.chk') && S.activeTimer.taskId === tid
-      ? fmtDur(Date.now() - S.activeTimer.start) : fmtDur(spentMs(tid));
+    el.textContent = el.dataset.seg ? fmtDur(Date.now() - S.activeTimer.start) : fmtDur(spentMs(el.dataset.task));
   });
 }, 1000);
 
