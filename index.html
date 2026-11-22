@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f1115">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Kompass">
+<title>Kompass</title>
+<link rel="manifest" href="/manifest.json">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/icon-192.png">
+<style>
+:root{
+  --bg:#0f1115; --card:#181b22; --card2:#1f232c; --line:#2a2f3a;
+  --text:#e9ecf1; --mute:#8b93a3; --accent:#7c9cff; --ok:#4cc38a; --warn:#f2b84b; --bad:#ef6b6b;
+  --r:14px;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--text);font:16px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+body{padding-bottom:calc(76px + env(safe-area-inset-bottom))}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer;border:0;background:none}
+.wrap{max-width:720px;margin:0 auto;padding:calc(14px + env(safe-area-inset-top)) 16px 24px}
+header.top{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.brand{font-weight:700;letter-spacing:.3px;font-size:18px;display:flex;align-items:center;gap:8px}
+.sync{width:9px;height:9px;border-radius:50%;background:var(--mute);display:inline-block}
+.sync.ok{background:var(--ok)}.sync.busy{background:var(--warn)}.sync.err{background:var(--bad)}
+.daynav{display:flex;align-items:center;gap:6px}
+.daynav button{padding:6px 10px;border-radius:10px;background:var(--card);color:var(--mute)}
+.daynav .lbl{font-weight:600;min-width:120px;text-align:center}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px;margin-bottom:14px}
+.card h2{font-size:13px;text-transform:uppercase;letter-spacing:.8px;color:var(--mute);margin:0 0 10px;font-weight:600;display:flex;justify-content:space-between;align-items:center}
+.row{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line)}
+.row:first-of-type{border-top:0}
+.dot{width:10px;height:10px;border-radius:50%;flex:0 0 10px}
+.grow{flex:1;min-width:0}
+.title{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.small{font-size:13px;color:var(--mute)}
+.ib{width:34px;height:34px;border-radius:10px;background:var(--card2);color:var(--mute);display:inline-flex;align-items:center;justify-content:center;flex:0 0 34px}
+.ib:active{transform:scale(.95)}
+.chk{width:26px;height:26px;border-radius:50%;border:2px solid var(--line);flex:0 0 26px;display:inline-flex;align-items:center;justify-content:center;color:var(--ok)}
+.chk.on{background:var(--ok);border-color:var(--ok);color:#0f1115}
+.btn{padding:11px 16px;border-radius:12px;background:var(--card2);border:1px solid var(--line);font-weight:600}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:#0b0d12}
+.btn.ok{background:var(--ok);border-color:var(--ok);color:#0b0d12}
+.btn.ghost{background:none}
+.btn.bad{color:var(--bad)}
+.btn.block{width:100%}
+input[type=text],input[type=number],input[type=date],input[type=password],select,textarea{
+  width:100%;background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;outline:none}
+input:focus,textarea:focus,select:focus{border-color:var(--accent)}
+textarea{resize:vertical;min-height:70px}
+.addrow{display:flex;gap:8px}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.chip{padding:6px 10px;border-radius:999px;border:1px solid var(--line);background:var(--card2);font-size:13px;display:inline-flex;align-items:center;gap:6px}
+.chip.on{border-color:var(--text)}
+details summary{cursor:pointer;list-style:none}
+details summary::-webkit-details-marker{display:none}
+.empty{color:var(--mute);font-size:14px;padding:6px 0}
+.banner{background:#2a2414;border:1px solid #4a3d1b;color:var(--warn);border-radius:12px;padding:10px 12px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:14px}
+.tabbar{position:fixed;left:0;right:0;bottom:0;background:rgba(15,17,21,.96);backdrop-filter:blur(10px);border-top:1px solid var(--line);display:flex;justify-content:space-around;padding:8px 0 calc(8px + env(safe-area-inset-bottom));z-index:5}
+.tabbar button{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:11px;color:var(--mute);padding:4px 14px}
+.tabbar button.on{color:var(--text)}
+.tabbar svg{width:22px;height:22px}
+/* Fokus */
+.focus{min-height:calc(100vh - 170px);display:flex;flex-direction:column;justify-content:center;text-align:center;gap:18px}
+.focus .q{font-size:13px;letter-spacing:.8px;text-transform:uppercase;display:inline-flex;gap:8px;align-items:center;justify-content:center;color:var(--mute)}
+.focus .t{font-size:28px;font-weight:700;line-height:1.25;padding:0 6px}
+.focus .clock{font-size:56px;font-variant-numeric:tabular-nums;font-weight:300;letter-spacing:1px}
+.focus .clock.run{color:var(--accent)}
+.focus .acts{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.focus textarea{text-align:left;min-height:90px}
+/* Woche */
+.big{font-size:40px;font-weight:700;font-variant-numeric:tabular-nums}
+.bar{height:10px;background:var(--card2);border-radius:999px;overflow:hidden;margin-top:6px}
+.bar>i{display:block;height:100%;border-radius:999px}
+.days{display:flex;gap:6px;align-items:flex-end;height:120px;margin-top:8px}
+.days .d{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;height:100%;justify-content:flex-end}
+.days .stack{width:100%;max-width:34px;display:flex;flex-direction:column-reverse;border-radius:6px;overflow:hidden;background:var(--card2);min-height:3px}
+.days .stack i{display:block;width:100%}
+.lbl2{font-size:11px;color:var(--mute)}
+.log{font-variant-numeric:tabular-nums}
+/* Sheet */
+.sheet-bg{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:20;display:flex;align-items:flex-end;justify-content:center}
+.sheet{background:var(--card);border:1px solid var(--line);border-radius:18px 18px 0 0;width:100%;max-width:720px;padding:18px 16px calc(18px + env(safe-area-inset-bottom));max-height:90vh;overflow:auto}
+.sheet h3{margin:0 0 12px}
+.field{margin-bottom:12px}
+.field label{display:block;font-size:13px;color:var(--mute);margin-bottom:5px}
+.btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+.palette{display:flex;gap:8px;flex-wrap:wrap}
+.palette button{width:28px;height:28px;border-radius:50%;border:2px solid transparent}
+.palette button.on{border-color:var(--text)}
+.qedit{border-top:1px solid var(--line);padding-top:12px;margin-top:12px}
+.qedit:first-of-type{border-top:0;padding-top:0;margin-top:0}
+.toast{position:fixed;left:50%;bottom:calc(90px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--card2);border:1px solid var(--line);padding:10px 14px;border-radius:12px;font-size:14px;z-index:30}
+@media (min-width:760px){.sheet-bg{align-items:center}.sheet{border-radius:18px}}
+</style>
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<nav class="tabbar" id="tabs"></nav>
+<div id="sheet"></div>
+
+<script>
+'use strict';
+/* =========================================================
+   Kompass – Daily Planning mit Quests, Fokus & Wochen-Review
+   ========================================================= */
+const LS_STATE = 'kompass-state-v1';
+const LS_CODE  = 'kompass-sync-code';
+const COLORS = ['#7c9cff','#4cc38a','#f2b84b','#ef6b6b','#c084fc','#2dd4bf','#f472b6','#94a3b8'];
+const MAX_QUESTS = 3;
+const WD = ['Mo','Di','Mi','Do','Fr','Sa','So'];
+
+/* ---------- Helpers ---------- */
+const $ = s => document.querySelector(s);
+const uid = () => Math.random().toString(36).slice(2,9) + Date.now().toString(36);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pad = n => String(n).padStart(2,'0');
+const dk = d => d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
+const parseDk = s => { const [y,m,d] = s.split('-').map(Number); return new Date(y, m-1, d); };
+const addDays = (s,n) => { const d = parseDk(s); d.setDate(d.getDate()+n); return dk(d); };
+const todayKey = () => dk(new Date());
+const mondayOf = s => { const d = parseDk(s); d.setDate(d.getDate() - ((d.getDay()+6)%7)); return dk(d); };
+const hm = ts => { const d = new Date(ts); return pad(d.getHours()) + ':' + pad(d.getMinutes()); };
+function fmtDur(ms){ if (ms > 0 && ms < 60000) return '< 1 min'; const m = Math.round(ms/60000); if (m < 60) return m + ' min'; return Math.floor(m/60) + ' h ' + pad(m%60); }
+function fmtClock(ms){ const s = Math.floor(ms/1000); return (s>=3600 ? Math.floor(s/3600)+':' : '') + pad(Math.floor(s/60)%60) + ':' + pad(s%60); }
+const hours = ms => (ms/3600000);
+const fmtH = ms => { if (ms <= 0) return '0 h'; if (ms < 3600000) return Math.max(1, Math.round(ms/60000)) + ' min'; return hours(ms).toFixed(1).replace('.', ',') + ' h'; };
+const fmtShort = ms => !ms ? '' : (ms < 3600000 ? Math.max(1, Math.round(ms/60000)) + 'm' : hours(ms).toFixed(1).replace('.', ','));
+function dayLabel(s){
+  const t = todayKey();
+  if (s === t) return 'Heute';
+  if (s === addDays(t,1)) return 'Morgen';
+  if (s === addDays(t,-1)) return 'Gestern';
+  const d = parseDk(s); return WD[(d.getDay()+6)%7] + ', ' + d.getDate() + '.' + (d.getMonth()+1) + '.';
+}
+function weekLabel(mon){ const a = parseDk(mon), b = parseDk(addDays(mon,6)); return a.getDate()+'.'+(a.getMonth()+1)+'. – '+b.getDate()+'.'+(b.getMonth()+1)+'.'; }
+function toast(msg){ const el = document.createElement('div'); el.className='toast'; el.textContent=msg; document.body.appendChild(el); setTimeout(()=>el.remove(), 2200); }
+
+/* ---------- State ---------- */
+const emptyState = () => ({ quests:[], tasks:[], sessions:[], reflections:{}, activeTimer:null, updatedAt:0 });
+function loadState(){
+  try { const s = JSON.parse(localStorage.getItem(LS_STATE)); if (s && Array.isArray(s.tasks)) return Object.assign(emptyState(), s); } catch(e){}
+  return emptyState();
+}
+let S = loadState();
+const ui = { view:'heute', day: todayKey(), week: mondayOf(todayKey()), openOther:false };
+
+function saveLocal(){ try { localStorage.setItem(LS_STATE, JSON.stringify(S)); } catch(e){ toast('Speichern fehlgeschlagen'); } }
+function commit(){ S.updatedAt = Date.now(); saveLocal(); schedulePush(); render(); }
+function commitQuiet(){ S.updatedAt = Date.now(); saveLocal(); schedulePush(); }
+
+const questById = id => S.quests.find(q => q.id === id);
+const activeQuests = () => S.quests.filter(q => !q.archived);
+const isQuestTask = t => { const q = t.questId && questById(t.questId); return !!(q && !q.archived); };
+const taskColor = t => { const q = t.questId && questById(t.questId); return q ? q.color : 'var(--line)'; };
+
+function spentMs(taskId){
+  let ms = 0;
+  for (const s of S.sessions) if (s.taskId === taskId) ms += s.end - s.start;
+  if (S.activeTimer && S.activeTimer.taskId === taskId) ms += Date.now() - S.activeTimer.start;
+  return ms;
+}
+function dayTasks(day){ return S.tasks.filter(t => t.date === day).sort((a,b) => a.order - b.order); }
+function groups(day){
+  const all = dayTasks(day);
+  return {
+    quest: all.filter(t => !t.done && isQuestTask(t)),
+    other: all.filter(t => !t.done && !isQuestTask(t)),
+    done:  all.filter(t => t.done).sort((a,b) => (a.doneAt||0) - (b.doneAt||0)),
+  };
+}
+function focusQueue(){ const g = groups(todayKey()); return g.quest.concat(g.other); }
+const nextOrder = day => Math.max(0, ...S.tasks.filter(t => t.date === day).map(t => t.order)) + 1;
+
+/* ---------- Timer ---------- */
+function stopTimer(){
+  const a = S.activeTimer; if (!a) return;
+  const end = Date.now();
+  if (end - a.start >= 5000) {
+    const t = S.tasks.find(x => x.id === a.taskId);
+    S.sessions.push({ id:uid(), taskId:a.taskId, questId: t ? (t.questId||null) : null, title: t ? t.title : '', start:a.start, end });
+  }
+  S.activeTimer = null;
+}
+function startTimer(taskId){ if (S.activeTimer) stopTimer(); S.activeTimer = { taskId, start: Date.now() }; }
+
+/* ---------- Aktionen ---------- */
+function addTask(title, questId, day){
+  title = title.trim(); if (!title) return;
+  S.tasks.push({ id:uid(), title, questId: questId || null, date: day, order: nextOrder(day), done:false, doneAt:null, notes:'' });
+  commit();
+}
+function moveTask(id, dir){
+  const t = S.tasks.find(x => x.id === id); if (!t) return;
+  const g = groups(t.date); const list = isQuestTask(t) ? g.quest : g.other;
+  const i = list.findIndex(x => x.id === id), j = i + dir;
+  if (j < 0 || j >= list.length) return;
+  const o = list[j].order; list[j].order = t.order; t.order = o; commit();
+}
+function toggleDone(id){
+  const t = S.tasks.find(x => x.id === id); if (!t) return;
+  if (!t.done && S.activeTimer && S.activeTimer.taskId === id) stopTimer();
+  t.done = !t.done; t.doneAt = t.done ? Date.now() : null;
+  if (!t.done) t.order = nextOrder(t.date);
+  commit();
+}
+function pullOverdue(){
+  const t = todayKey();
+  S.tasks.filter(x => !x.done && x.date < t).forEach(x => { x.date = t; x.order = nextOrder(t); });
+  commit(); toast('Auf heute geholt');
+}
+
+/* ---------- Render ---------- */
+const ICONS = {
+  heute:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1"/><circle cx="4.5" cy="12" r="1"/><circle cx="4.5" cy="18" r="1"/></svg>',
+  fokus:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/></svg>',
+  woche:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 20V11M12 20V5M19 20v-6"/></svg>',
+  quests:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 3l2.6 5.6 6 .7-4.5 4.1 1.2 6L12 16.5 6.7 19.4l1.2-6L3.4 9.3l6-.7z"/></svg>',
+};
+const TABS = [['heute','Heute'],['fokus','Fokus'],['woche','Woche'],['quests','Quests']];
+
+function render(){
+  $('#tabs').innerHTML = TABS.map(([k,l]) => `<button data-act="tab" data-v="${k}" class="${ui.view===k?'on':''}">${ICONS[k]}<span>${l}</span></button>`).join('');
+  const syncCls = syncState.code ? syncState.status : '';
+  const head = `<header class="top"><div class="brand"><span class="sync ${syncCls}" title="${esc(syncTitle())}"></span>Kompass</div>${headRight()}</header>`;
+  let body = '';
+  if (ui.view === 'heute') body = renderHeute();
+  else if (ui.view === 'fokus') body = renderFokus();
+  else if (ui.view === 'woche') body = renderWoche();
+  else body = renderQuests();
+  $('#app').innerHTML = head + body;
+}
+function headRight(){
+  if (ui.view === 'heute') return `<div class="daynav"><button data-act="day" data-v="-1">‹</button><button class="lbl" data-act="day" data-v="0">${dayLabel(ui.day)}</button><button data-act="day" data-v="1">›</button></div>`;
+  if (ui.view === 'woche') return `<div class="daynav"><button data-act="week" data-v="-1">‹</button><button class="lbl" data-act="week" data-v="0">${weekLabel(ui.week)}</button><button data-act="week" data-v="1">›</button></div>`;
+  return '';
+}
+
+function taskRow(t, opts = {}){
+  const running = S.activeTimer && S.activeTimer.taskId === t.id;
+  const sp = spentMs(t.id);
+  const meta = [];
+  if (running) meta.push('<span style="color:var(--accent)">● läuft</span>');
+  if (sp > 0) meta.push(`<span class="live" data-task="${t.id}">${fmtDur(sp)}</span>`);
+  if (t.notes) meta.push('Notiz');
+  return `<div class="row">
+    <button class="chk ${t.done?'on':''}" data-act="done" data-id="${t.id}" aria-label="erledigt">${t.done?'✓':''}</button>
+    <span class="dot" style="background:${taskColor(t)}"></span>
+    <div class="grow" data-act="edit" data-id="${t.id}"><div class="title" style="${t.done?'color:var(--mute);text-decoration:line-through':''}">${esc(t.title)}</div>${meta.length?`<div class="small">${meta.join(' · ')}</div>`:''}</div>
+    ${opts.sort ? `<button class="ib" data-act="up" data-id="${t.id}" aria-label="hoch">↑</button><button class="ib" data-act="down" data-id="${t.id}" aria-label="runter">↓</button>` : ''}
+  </div>`;
+}
+
+let addQuest = null; // gewählte Quest im Eingabefeld
+function renderHeute(){
+  const g = groups(ui.day);
+  const t = todayKey();
+  const overdue = S.tasks.filter(x => !x.done && x.date < t).length;
+  const aq = activeQuests();
+  if (addQuest && !aq.find(q => q.id === addQuest)) addQuest = null;
+  let h = '';
+  if (ui.day === t && overdue) h += `<div class="banner"><span>${overdue} offene Aufgabe${overdue>1?'n':''} von früheren Tagen</span><button class="btn" data-act="overdue">Auf heute holen</button></div>`;
+
+  h += `<div class="card"><form class="addrow" data-form="add"><input type="text" id="addInput" placeholder="Neue Aufgabe für ${dayLabel(ui.day)}…" autocomplete="off"><button class="btn pri" type="submit">+</button></form>
+    <div class="chips">${aq.map(q => `<button class="chip ${addQuest===q.id?'on':''}" data-act="addq" data-id="${q.id}"><span class="dot" style="background:${q.color}"></span>${esc(q.name)}</button>`).join('')}
+    <button class="chip ${addQuest===null?'on':''}" data-act="addq" data-id=""><span class="dot" style="background:var(--line)"></span>Ohne Quest</button></div>
+    ${aq.length===0 ? '<div class="small" style="margin-top:8px">Tipp: Lege unter „Quests“ zuerst deine 1–3 großen Ziele an.</div>' : ''}</div>`;
+
+  h += `<div class="card"><h2><span>Quest-Aufgaben</span>${g.quest.length && ui.day===t ? '<button class="btn pri" data-act="tab" data-v="fokus" style="padding:6px 12px;font-size:13px">Fokus starten</button>' : ''}</h2>
+    ${g.quest.length ? g.quest.map(x => taskRow(x,{sort:true})).join('') : '<div class="empty">Keine offenen Quest-Aufgaben.</div>'}</div>`;
+
+  h += `<div class="card"><details ${(ui.openOther || aq.length===0)?'open':''}><summary data-act="toggleOther"><h2 style="margin:0"><span>Ohne Quest · erst abends (${g.other.length})</span><span>${(ui.openOther || aq.length===0)?'▾':'▸'}</span></h2></summary>
+    <div style="margin-top:8px">${g.other.length ? g.other.map(x => taskRow(x,{sort:true})).join('') : '<div class="empty">Nichts offen.</div>'}</div></details></div>`;
+
+  // Done-Liste
+  const daySessions = S.sessions.filter(s => dk(new Date(s.start)) === ui.day).sort((a,b) => a.start - b.start);
+  let questMs = 0, allMs = 0;
+  for (const s of daySessions){ const d = s.end - s.start; allMs += d; if (sessionIsQuest(s)) questMs += d; }
+  if (S.activeTimer && dk(new Date(S.activeTimer.start)) === ui.day){
+    const d = Date.now() - S.activeTimer.start; allMs += d;
+    const at = S.tasks.find(x => x.id === S.activeTimer.taskId); if (at && isQuestTask(at)) questMs += d;
+  }
+  h += `<div class="card"><h2><span>Done-Liste (${g.done.length})</span><span style="text-transform:none;letter-spacing:0">Quest Hours ${fmtH(questMs)}</span></h2>
+    ${g.done.length ? g.done.map(x => taskRow(x)).join('') : '<div class="empty">Noch nichts erledigt – das kommt.</div>'}</div>`;
+
+  // Logbuch
+  h += `<div class="card"><h2><span>Logbuch</span><span style="text-transform:none;letter-spacing:0">gesamt ${fmtDur(allMs)}</span></h2>
+    ${daySessions.length || (S.activeTimer && dk(new Date(S.activeTimer.start))===ui.day) ? daySessions.map(s => {
+      const t2 = S.tasks.find(x => x.id === s.taskId); const q = questById(s.questId);
+      return `<div class="row log"><span class="dot" style="background:${q && !q.archived ? q.color : 'var(--line)'}"></span><span class="small" style="width:92px">${hm(s.start)}–${hm(s.end)}</span><div class="grow title">${esc(t2 ? t2.title : s.title)}</div><span class="small">${fmtDur(s.end-s.start)}</span></div>`;
+    }).join('') + (S.activeTimer && dk(new Date(S.activeTimer.start))===ui.day ? (() => { const at = S.tasks.find(x => x.id === S.activeTimer.taskId); return `<div class="row log"><span class="dot" style="background:var(--accent)"></span><span class="small" style="width:92px">${hm(S.activeTimer.start)}–jetzt</span><div class="grow title">${esc(at?at.title:'')}</div><span class="small live" data-task="${S.activeTimer.taskId}">${fmtDur(Date.now()-S.activeTimer.start)}</span></div>`; })() : '')
+    : '<div class="empty">Hier erscheint die tatsächlich gearbeitete Zeit, sobald du im Fokus den Timer nutzt.</div>'}</div>`;
+  return h;
+}
+function sessionIsQuest(s){ return !!(s.questId && questById(s.questId)); }
+
+function renderFokus(){
+  const q = focusQueue();
+  let cur = null;
+  if (S.activeTimer) cur = S.tasks.find(x => x.id === S.activeTimer.taskId && !x.done) || null;
+  if (!cur) cur = q[0] || null;
+  if (!cur){
+    const doneToday = groups(todayKey()).done.length;
+    return `<div class="focus"><div class="t">${doneToday ? 'Alles erledigt für heute.' : 'Keine Aufgaben für heute.'}</div>
+      <div class="small">${doneToday ? doneToday + ' Aufgaben auf der Done-Liste.' : 'Plane zuerst deinen Tag unter „Heute“.'}</div>
+      <div class="acts"><button class="btn" data-act="tab" data-v="heute">Zu Heute</button></div></div>`;
+  }
+  const quest = questById(cur.questId);
+  const running = S.activeTimer && S.activeTimer.taskId === cur.id;
+  return `<div class="focus">
+    <div class="q"><span class="dot" style="background:${taskColor(cur)}"></span>${quest && !quest.archived ? esc(quest.name) : 'Ohne Quest'}</div>
+    <div class="t">${esc(cur.title)}</div>
+    <div class="clock ${running?'run':''} live-clock" data-task="${cur.id}">${fmtClock(spentMs(cur.id))}</div>
+    <div class="acts">
+      ${running ? `<button class="btn" data-act="pause">Pause</button>` : `<button class="btn pri" data-act="start" data-id="${cur.id}">Start</button>`}
+      <button class="btn ok" data-act="complete" data-id="${cur.id}">Erledigt ✓</button>
+    </div>
+    <textarea placeholder="Notizen zu dieser Aufgabe…" data-notes="${cur.id}">${esc(cur.notes)}</textarea>
+    <div><button class="btn ghost small" data-act="skip" data-id="${cur.id}">Später (ans Ende)</button></div>
+  </div>`;
+}
+
+function weekStats(mon){
+  const days = Array.from({length:7}, (_,i) => addDays(mon,i));
+  const per = {}; const perDay = days.map(() => ({})); let quest = 0, all = 0;
+  const add = (questId, start, ms) => {
+    const di = days.indexOf(dk(new Date(start))); if (di < 0) return;
+    all += ms;
+    const q = questId && questById(questId);
+    if (q){ quest += ms; per[q.id] = (per[q.id]||0) + ms; perDay[di][q.id] = (perDay[di][q.id]||0) + ms; }
+    else perDay[di]._ = (perDay[di]._||0) + ms;
+  };
+  for (const s of S.sessions) add(s.questId, s.start, s.end - s.start);
+  if (S.activeTimer){ const t = S.tasks.find(x => x.id === S.activeTimer.taskId); add(t ? t.questId : null, S.activeTimer.start, Date.now() - S.activeTimer.start); }
+  const done = S.tasks.filter(t => t.done && t.doneAt && days.includes(dk(new Date(t.doneAt)))).length;
+  return { days, per, perDay, quest, all, done };
+}
+function renderWoche(){
+  const st = weekStats(ui.week);
+  const qs = S.quests.filter(q => !q.archived || st.per[q.id]);
+  const goal = activeQuests().reduce((a,q) => a + (Number(q.weeklyGoalH)||0), 0);
+  const pct = goal ? Math.min(100, Math.max(st.quest ? 1.5 : 0, hours(st.quest)/goal*100)) : 0;
+  const maxDay = Math.max(1, ...st.perDay.map(o => Object.values(o).reduce((a,b)=>a+b,0)));
+  let h = `<div class="card"><h2><span>Quest Hours</span><span style="text-transform:none;letter-spacing:0">${st.done} erledigt</span></h2>
+    <div class="big">${fmtH(st.quest)}${goal ? `<span class="small" style="font-size:16px;font-weight:400"> / ${String(goal).replace('.',',')} h Ziel</span>` : ''}</div>
+    ${goal ? `<div class="bar"><i style="width:${pct}%;background:var(--accent)"></i></div>` : '<div class="small">Lege bei deinen Quests ein Wochenziel in Stunden fest (Input-Ziel).</div>'}
+    <div class="small" style="margin-top:8px">Gesamt gearbeitet: ${fmtH(st.all)} · davon ${st.all ? Math.round(st.quest/st.all*100) : 0} % für Quests</div></div>`;
+
+  h += `<div class="card"><h2>Pro Quest</h2>${qs.length ? qs.map(q => {
+      const ms = st.per[q.id]||0, g = Number(q.weeklyGoalH)||0, p = g ? Math.min(100, hours(ms)/g*100) : (ms?100:0);
+      return `<div style="margin-bottom:12px"><div style="display:flex;justify-content:space-between"><span><span class="dot" style="display:inline-block;background:${q.color};margin-right:6px"></span>${esc(q.name)}</span><span class="small">${fmtH(ms)}${g?` / ${String(g).replace('.',',')} h`:''}</span></div><div class="bar"><i style="width:${p}%;background:${q.color}"></i></div></div>`;
+    }).join('') : '<div class="empty">Noch keine Quests.</div>'}</div>`;
+
+  h += `<div class="card"><h2>Tage</h2><div class="days">${st.perDay.map((o,i) => {
+      const tot = Object.values(o).reduce((a,b)=>a+b,0);
+      const segs = Object.entries(o).map(([k,ms]) => `<i style="height:${ms/maxDay*96}px;background:${k==='_'?'var(--line)':(questById(k)||{}).color}"></i>`).join('');
+      return `<div class="d"><span class="lbl2">${fmtShort(tot)}</span><div class="stack">${segs}</div><span class="lbl2" style="${st.days[i]===todayKey()?'color:var(--text)':''}">${WD[i]}</span></div>`;
+    }).join('')}</div></div>`;
+
+  // Verlauf der letzten 8 Wochen
+  const hist = Array.from({length:8}, (_,i) => addDays(ui.week, -7*(7-i))).map(m => ({ m, q: weekStats(m).quest }));
+  const maxH = Math.max(1, ...hist.map(x => x.q));
+  h += `<div class="card"><h2>Verlauf Quest Hours</h2><div class="days" style="height:90px">${hist.map(x => `<div class="d"><span class="lbl2">${fmtShort(x.q)}</span><div class="stack"><i style="height:${x.q/maxH*60}px;background:${x.m===ui.week?'var(--accent)':'#3a4255'}"></i></div><span class="lbl2">${parseDk(x.m).getDate()}.${parseDk(x.m).getMonth()+1}.</span></div>`).join('')}</div></div>`;
+
+  const r = S.reflections[ui.week] || {};
+  h += `<div class="card"><h2><span>Wochen-Reflexion</span><span style="text-transform:none;letter-spacing:0">${r.savedAt ? 'gespeichert' : 'ca. 20 Min.'}</span></h2>
+    <div class="field"><label>Was lief gut?</label><textarea data-refl="good">${esc(r.good)}</textarea></div>
+    <div class="field"><label>Was lief schlecht – und warum?</label><textarea data-refl="bad">${esc(r.bad)}</textarea></div>
+    <div class="field"><label>Was ändere ich nächste Woche konkret?</label><textarea data-refl="improve">${esc(r.improve)}</textarea></div>
+    <div class="field"><label>Passen Ziele und Alltag zusammen? (vertikale Kohärenz)</label><textarea data-refl="coherence">${esc(r.coherence)}</textarea></div>
+    <div class="small">Wird automatisch gespeichert.</div></div>`;
+  return h;
+}
+
+function renderQuests(){
+  const aq = activeQuests(), arch = S.quests.filter(q => q.archived);
+  let h = `<div class="card"><h2><span>Aktive Quests (${aq.length}/${MAX_QUESTS})</span></h2>
+    <div class="small" style="margin-bottom:12px">Deine großen Ziele für dieses Quartal. Jede Aufgabe gehört zu einer Quest – oder bewusst zu keiner. Das Wochenziel misst Input (Stunden), nicht Output.</div>
+    ${aq.map(q => `<div class="qedit">
+      <div class="field"><label>Name</label><input type="text" value="${esc(q.name)}" data-q="${q.id}" data-k="name"></div>
+      <div class="field"><label>Ziel / warum (optional)</label><input type="text" value="${esc(q.goal||'')}" data-q="${q.id}" data-k="goal" placeholder="z. B. 50 zahlende Kunden bis 31.3."></div>
+      <div class="field"><label>Input-Ziel pro Woche (Stunden)</label><input type="number" min="0" step="0.5" inputmode="decimal" value="${esc(q.weeklyGoalH ?? '')}" data-q="${q.id}" data-k="weeklyGoalH"></div>
+      <div class="field"><label>Farbe</label><div class="palette">${COLORS.map(c => `<button style="background:${c}" class="${q.color===c?'on':''}" data-act="qcolor" data-id="${q.id}" data-c="${c}" aria-label="Farbe"></button>`).join('')}</div></div>
+      <button class="btn ghost small" data-act="qarch" data-id="${q.id}">Archivieren</button>
+    </div>`).join('')}
+    <button class="btn ${aq.length?'':'pri'} block" style="margin-top:12px" data-act="qadd">+ Quest hinzufügen</button>
+    ${aq.length >= MAX_QUESTS ? '<div class="small" style="margin-top:8px;color:var(--warn)">Empfehlung: höchstens 3 Quests gleichzeitig – sonst verliert der Fokus seine Wirkung.</div>' : ''}</div>`;
+  if (arch.length) h += `<div class="card"><h2>Archiv</h2>${arch.map(q => `<div class="row"><span class="dot" style="background:${q.color}"></span><div class="grow title">${esc(q.name)}</div><button class="btn ghost small" data-act="qrestore" data-id="${q.id}">Reaktivieren</button></div>`).join('')}</div>`;
+
+  h += `<div class="card"><h2>Sync Handy ↔ PC</h2>
+    <div class="small" style="margin-bottom:10px">Gib auf allen Geräten denselben geheimen Sync-Code ein (mind. 8 Zeichen). Wer den Code kennt, sieht deine Daten – also wie ein Passwort behandeln.</div>
+    ${syncState.code
+      ? `<div class="small" style="margin-bottom:10px">Status: <b style="color:var(--text)">${esc(syncTitle())}</b></div><div class="btns"><button class="btn" data-act="syncnow">Jetzt synchronisieren</button><button class="btn ghost bad" data-act="syncoff">Trennen</button></div>`
+      : `<form class="addrow" data-form="sync"><input type="password" id="syncInput" placeholder="Sync-Code" autocomplete="off"><button class="btn pri" type="submit">Verbinden</button></form>`}
+  </div>
+  <div class="card"><h2>Daten</h2><div class="btns"><button class="btn" data-act="export">Backup exportieren</button><label class="btn" style="display:inline-block">Backup importieren<input type="file" accept="application/json" id="importFile" style="display:none"></label></div></div>`;
+  return h;
+}
+
+/* ---------- Bearbeiten-Sheet ---------- */
+function openEdit(id){
+  const t = S.tasks.find(x => x.id === id); if (!t) return;
+  const opts = `<option value="">Ohne Quest</option>` + S.quests.filter(q => !q.archived || q.id === t.questId).map(q => `<option value="${q.id}" ${q.id===t.questId?'selected':''}>${esc(q.name)}</option>`).join('');
+  $('#sheet').innerHTML = `<div class="sheet-bg" data-act="closeSheet"><div class="sheet" data-stop>
+    <h3>Aufgabe</h3>
+    <div class="field"><label>Titel</label><input type="text" id="eTitle" value="${esc(t.title)}"></div>
+    <div class="field"><label>Quest</label><select id="eQuest">${opts}</select></div>
+    <div class="field"><label>Tag</label><input type="date" id="eDate" value="${t.date}"></div>
+    <div class="field"><label>Notizen</label><textarea id="eNotes">${esc(t.notes)}</textarea></div>
+    <div class="small" style="margin-bottom:10px">Investierte Zeit: ${fmtDur(spentMs(t.id))}</div>
+    <div class="btns">
+      <button class="btn pri" data-act="eSave" data-id="${t.id}">Speichern</button>
+      ${t.done ? '' : `<button class="btn" data-act="eTomorrow" data-id="${t.id}">Auf morgen</button><button class="btn" data-act="eFocus" data-id="${t.id}">Jetzt fokussieren</button>`}
+      <button class="btn ghost bad" data-act="eDel" data-id="${t.id}">Löschen</button>
+    </div></div></div>`;
+}
+const closeSheet = () => { $('#sheet').innerHTML = ''; };
+
+/* ---------- Events ---------- */
+document.addEventListener('click', e => {
+  const el = e.target.closest('[data-act]');
+  if (!el) return;
+  const act = el.dataset.act, id = el.dataset.id;
+  if (act === 'closeSheet' && e.target.closest('[data-stop]')) return;
+  if (act === 'toggleOther'){ e.preventDefault(); ui.openOther = !ui.openOther; render(); return; }
+  switch (act){
+    case 'tab': ui.view = el.dataset.v; if (ui.view === 'heute') ui.day = ui.day || todayKey(); render(); window.scrollTo(0,0); break;
+    case 'day': { const v = +el.dataset.v; ui.day = v === 0 ? todayKey() : addDays(ui.day, v); render(); break; }
+    case 'week': { const v = +el.dataset.v; ui.week = v === 0 ? mondayOf(todayKey()) : addDays(ui.week, 7*v); render(); break; }
+    case 'addq': addQuest = id || null; render(); setTimeout(() => { const i = $('#addInput'); if (i) i.focus(); }, 0); break;
+    case 'done': toggleDone(id); break;
+    case 'up': moveTask(id, -1); break;
+    case 'down': moveTask(id, 1); break;
+    case 'edit': openEdit(id); break;
+    case 'overdue': pullOverdue(); break;
+    case 'start': startTimer(id); commit(); break;
+    case 'pause': stopTimer(); commit(); break;
+    case 'complete': {
+      const wasRunning = !!S.activeTimer;
+      const t = S.tasks.find(x => x.id === id);
+      if (S.activeTimer && S.activeTimer.taskId === id) stopTimer();
+      if (t){ t.done = true; t.doneAt = Date.now(); }
+      const nxt = focusQueue()[0];
+      if (wasRunning && nxt) startTimer(nxt.id);
+      commit(); toast('Erledigt ✓'); break;
+    }
+    case 'skip': {
+      const t = S.tasks.find(x => x.id === id); if (!t) break;
+      const running = S.activeTimer && S.activeTimer.taskId === id;
+      if (running) stopTimer();
+      t.order = nextOrder(t.date);
+      const nxt = focusQueue()[0];
+      if (running && nxt) startTimer(nxt.id);
+      commit(); break;
+    }
+    case 'closeSheet': closeSheet(); break;
+    case 'eSave': case 'eTomorrow': case 'eFocus': {
+      const t = S.tasks.find(x => x.id === id); if (!t) break;
+      const newDate = act === 'eTomorrow' ? addDays(todayKey(), 1) : ($('#eDate').value || t.date);
+      if (newDate !== t.date){ t.date = newDate; t.order = nextOrder(newDate); }
+      t.title = $('#eTitle').value.trim() || t.title;
+      t.questId = $('#eQuest').value || null;
+      t.notes = $('#eNotes').value;
+      if (act === 'eFocus'){
+        t.date = todayKey(); t.order = Math.min(0, ...S.tasks.filter(x => x.date === t.date).map(x => x.order)) - 1;
+        startTimer(t.id); ui.view = 'fokus';
+      }
+      closeSheet(); commit(); break;
+    }
+    case 'eDel': {
+      if (!confirm('Aufgabe löschen? Die erfasste Zeit bleibt im Logbuch.')) break;
+      if (S.activeTimer && S.activeTimer.taskId === id) stopTimer();
+      S.tasks = S.tasks.filter(x => x.id !== id); closeSheet(); commit(); break;
+    }
+    case 'qadd': {
+      const used = S.quests.filter(q => !q.archived).map(q => q.color);
+      S.quests.push({ id:uid(), name:'Neue Quest', goal:'', weeklyGoalH:5, color: COLORS.find(c => !used.includes(c)) || COLORS[0], archived:false });
+      commit(); break;
+    }
+    case 'qcolor': { const q = questById(id); if (q){ q.color = el.dataset.c; commit(); } break; }
+    case 'qarch': { const q = questById(id); if (q && confirm(`„${q.name}“ archivieren? Aufgaben bleiben erhalten.`)){ q.archived = true; commit(); } break; }
+    case 'qrestore': { const q = questById(id); if (q){ q.archived = false; commit(); } break; }
+    case 'syncnow': syncNow(true); break;
+    case 'syncoff': if (confirm('Sync auf diesem Gerät trennen? Daten bleiben lokal erhalten.')){ localStorage.removeItem(LS_CODE); syncState.code = null; syncState.id = null; render(); } break;
+    case 'export': {
+      const blob = new Blob([JSON.stringify(S, null, 2)], {type:'application/json'});
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'kompass-backup-' + todayKey() + '.json'; a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000); break;
+    }
+  }
+});
+
+document.addEventListener('submit', e => {
+  const f = e.target.closest('[data-form]'); if (!f) return;
+  e.preventDefault();
+  if (f.dataset.form === 'add'){
+    const v = $('#addInput').value;
+    if (v.trim() && !addQuest){ ui.openOther = true; if (activeQuests().length) toast('Unter „Ohne Quest“ abgelegt'); }
+    addTask(v, addQuest, ui.day);
+    setTimeout(() => { const i = $('#addInput'); if (i) i.focus(); }, 0);
+  } else if (f.dataset.form === 'sync'){
+    const code = $('#syncInput').value.trim();
+    if (code.length < 8){ toast('Mindestens 8 Zeichen'); return; }
+    connectSync(code);
+  }
+});
+
+let typingTimer = null;
+document.addEventListener('input', e => {
+  const t = e.target;
+  if (t.dataset.notes){
+    const task = S.tasks.find(x => x.id === t.dataset.notes); if (task){ task.notes = t.value; clearTimeout(typingTimer); typingTimer = setTimeout(commitQuiet, 500); }
+  } else if (t.dataset.refl){
+    const r = S.reflections[ui.week] = S.reflections[ui.week] || {};
+    r[t.dataset.refl] = t.value; r.savedAt = Date.now();
+    clearTimeout(typingTimer); typingTimer = setTimeout(commitQuiet, 500);
+  } else if (t.dataset.q){
+    const q = questById(t.dataset.q); if (!q) return;
+    q[t.dataset.k] = t.dataset.k === 'weeklyGoalH' ? (t.value === '' ? '' : Number(t.value)) : t.value;
+    clearTimeout(typingTimer); typingTimer = setTimeout(commitQuiet, 500);
+  }
+});
+document.addEventListener('change', e => {
+  if (e.target.id === 'importFile' && e.target.files[0]){
+    const r = new FileReader();
+    r.onload = () => {
+      try {
+        const s = JSON.parse(r.result);
+        if (!s || !Array.isArray(s.tasks)) throw 0;
+        if (!confirm('Aktuelle Daten durch das Backup ersetzen?')) return;
+        S = Object.assign(emptyState(), s); commit(); toast('Backup importiert');
+      } catch(_) { toast('Datei ist kein gültiges Backup'); }
+    };
+    r.readAsText(e.target.files[0]);
+  }
+});
+
+// Live-Timer aktualisieren, ohne neu zu rendern (Eingaben bleiben erhalten)
+setInterval(() => {
+  if (!S.activeTimer) return;
+  document.querySelectorAll('.live-clock').forEach(el => { el.textContent = fmtClock(spentMs(el.dataset.task)); });
+  document.querySelectorAll('.live').forEach(el => {
+    const tid = el.dataset.task;
+    el.textContent = el.closest('.log') && !el.closest('.row').querySelector('.chk') && S.activeTimer.taskId === tid
+      ? fmtDur(Date.now() - S.activeTimer.start) : fmtDur(spentMs(tid));
+  });
+}, 1000);
+
+// Tageswechsel erkennen
+let lastToday = todayKey();
+setInterval(() => { const t = todayKey(); if (t !== lastToday){ if (ui.day === lastToday) ui.day = t; lastToday = t; ui.week = mondayOf(t); render(); } }, 30000);
+
+/* ---------- Sync ---------- */
+const syncState = { code: localStorage.getItem(LS_CODE), id: null, status: 'ok', error: '', lastSync: 0 };
+function syncTitle(){
+  if (!syncState.code) return 'Nur auf diesem Gerät';
+  if (syncState.status === 'busy') return 'Synchronisiere…';
+  if (syncState.status === 'err') return 'Sync-Fehler: ' + syncState.error;
+  return syncState.lastSync ? 'Synchron (' + hm(syncState.lastSync) + ')' : 'Verbunden';
+}
+function setSync(status, error = ''){
+  syncState.status = status; syncState.error = error;
+  const d = document.querySelector('.sync'); if (d){ d.className = 'sync ' + (syncState.code ? status : ''); d.title = syncTitle(); }
+}
+async function sha256(str){
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('kompass|' + str));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+async function getId(){ if (!syncState.id && syncState.code) syncState.id = await sha256(syncState.code); return syncState.id; }
+
+async function pull(){
+  const id = await getId(); if (!id) return;
+  setSync('busy');
+  const r = await fetch('/api/sync?id=' + id, { cache:'no-store' });
+  const j = await r.json();
+  if (!r.ok) throw new Error(j.error || r.status);
+  if (j.state && (j.state.updatedAt||0) > (S.updatedAt||0)){
+    S = Object.assign(emptyState(), j.state); saveLocal(); render();
+  }
+  syncState.lastSync = Date.now(); setSync('ok');
+  return j.state;
+}
+let pushTimer = null, pushing = false;
+function schedulePush(){ if (!syncState.code) return; clearTimeout(pushTimer); setSync('busy'); pushTimer = setTimeout(push, 1200); }
+async function push(){
+  const id = await getId(); if (!id) return;
+  if (pushing){ schedulePush(); return; }
+  pushing = true;
+  try {
+    const r = await fetch('/api/sync', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id, state: S }) });
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error || r.status);
+    if (j.conflict && j.state){ S = Object.assign(emptyState(), j.state); saveLocal(); render(); toast('Neuerer Stand vom anderen Gerät geladen'); }
+    syncState.lastSync = Date.now(); setSync('ok');
+  } catch(e){ setSync('err', navigator.onLine ? String(e.message||e) : 'offline'); }
+  finally { pushing = false; }
+}
+async function syncNow(manual){
+  if (!syncState.code) return;
+  try {
+    await pull();
+    await push();
+    if (manual) toast('Synchronisiert');
+  } catch(e){ setSync('err', navigator.onLine ? String(e.message||e) : 'offline'); if (manual) toast('Sync fehlgeschlagen'); }
+}
+async function connectSync(code){
+  syncState.code = code; syncState.id = null;
+  try {
+    const remote = await pull();
+    localStorage.setItem(LS_CODE, code);
+    if (!remote || (remote.updatedAt||0) <= (S.updatedAt||0)) await push();
+    toast(remote ? 'Verbunden – Daten geladen' : 'Verbunden – neuer Sync-Bereich angelegt');
+    render();
+  } catch(e){
+    syncState.code = null; syncState.id = null; setSync('ok');
+    toast('Verbindung fehlgeschlagen: ' + (e.message || e));
+  }
+}
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') syncNow(false); });
+window.addEventListener('online', () => syncNow(false));
+setInterval(() => { if (document.visibilityState === 'visible' && !pushing && syncState.status !== 'busy') syncNow(false); }, 60000);
+
+/* ---------- Start ---------- */
+render();
+if (syncState.code) syncNow(false);
+if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('/sw.js').catch(()=>{});
+</script>
+</body>
+</html>
