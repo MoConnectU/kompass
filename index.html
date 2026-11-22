@@ -204,6 +204,14 @@ textarea{resize:vertical;min-height:80px;font-family:var(--serif);line-height:1.
 .arow input[type=text]:focus{border-bottom-color:var(--ink)}
 .three{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
 @media (max-width:520px){.three{grid-template-columns:1fr}}
+.blocks{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:6px;font-size:14px;color:var(--mute)}
+.blocks button{padding:5px 12px;border-radius:999px;border:1px solid var(--rule);color:var(--mute);font-size:14px}
+.blocks button.on{border-color:var(--ink);color:var(--ink);font-weight:600;background:var(--sheet)}
+.dial.over .prog{stroke:var(--bad)}
+.dial.over .needle{fill:var(--bad)}
+.dial.over .clock{color:var(--bad)}
+.dial.over .state{color:var(--bad);font-weight:600}
+.more summary{cursor:pointer;color:var(--mute);font-size:15px;margin:4px 0 12px}
 .toast{position:fixed;left:50%;bottom:calc(96px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:10px 16px;border-radius:999px;font-size:14px;z-index:30;white-space:nowrap}
 @media (min-width:760px){.sheet-bg{align-items:center}.sheet{border-radius:18px}.dateline h1{font-size:36px}}
 </style>
@@ -332,6 +340,15 @@ function toggleDone(id){
   if (!t.done) t.order = nextOrder(t.date);
   commit();
 }
+/* Offene Aufgaben früherer Tage wandern automatisch auf heute.
+   Läuft erst nach dem Sync, damit kein älterer Stand einen neueren überschreibt. */
+function carryOver(){
+  const t = todayKey(); let n = 0;
+  S.tasks.filter(x => !x.done && x.date < t).sort((a,b) => a.date.localeCompare(b.date) || a.order - b.order)
+    .forEach(x => { x.date = t; x.order = nextOrder(t); n++; });
+  if (n) commit();
+  return n;
+}
 function pullOverdue(){
   const t = todayKey();
   S.tasks.filter(x => !x.done && x.date < t).forEach(x => { x.date = t; x.order = nextOrder(t); });
@@ -395,13 +412,20 @@ function taskRow(t, opts = {}){
   </li>`;
 }
 
-let addQuest = null, addArea = null;
+let addQuest, addArea = null; // addQuest undefined = noch nicht bestimmt
+const LS_ADDQ = 'kompass-addq';
+function defaultQuest(){
+  const aq = activeQuests(); const saved = localStorage.getItem(LS_ADDQ);
+  if (saved === 'none') return null;
+  if (saved && aq.find(q => q.id === saved)) return saved;
+  const a = aq.find(q => q.name === 'Anfragen'); return a ? a.id : null;
+}
 function renderHeute(){
   const g = groups(ui.day);
   const t = todayKey();
   const overdue = S.tasks.filter(x => !x.done && x.date < t).length;
   const aq = activeQuests();
-  if (addQuest && !aq.find(q => q.id === addQuest)) addQuest = null;
+  if (addQuest === undefined || (addQuest && !aq.find(q => q.id === addQuest))) addQuest = defaultQuest();
   const areas = activeAreas();
   if (addArea && !areas.find(a => a.id === addArea)) addArea = null;
   const otherOpen = ui.openOther || aq.length === 0;
@@ -450,22 +474,23 @@ function sessionIsQuest(s){ return !!(s.questId && questById(s.questId)); }
 
 /* Kompass-Ring: eine Umdrehung = 60 Minuten */
 const DIAL_R = 130, DIAL_C = 2 * Math.PI * DIAL_R;
-function dialSvg(ms){
+function dialFrac(ms, bs){ return bs ? Math.min(1, bs.el / bs.len) : (ms % 3600000) / 3600000; }
+function dialSvg(ms, bs){
   let ticks = '';
   for (let i = 0; i < 60; i++){
     const a = i * 6 * Math.PI / 180, major = i % 5 === 0;
     const r1 = 146, r2 = major ? 158 : 153;
     ticks += `<line class="tick ${major?'major':''}" x1="${(Math.sin(a)*r1).toFixed(1)}" y1="${(-Math.cos(a)*r1).toFixed(1)}" x2="${(Math.sin(a)*r2).toFixed(1)}" y2="${(-Math.cos(a)*r2).toFixed(1)}" stroke-width="${major?2:1}"/>`;
   }
-  const frac = (ms % 3600000) / 3600000, ang = frac * 2 * Math.PI;
+  const frac = dialFrac(ms, bs), ang = frac * 2 * Math.PI;
   return `<svg viewBox="-170 -170 340 340" aria-hidden="true">${ticks}
     <path class="north" d="M0 -168 L6 -160 L-6 -160 Z"/>
     <circle class="track" r="${DIAL_R}" fill="none" stroke-width="5"/>
     <circle class="prog" r="${DIAL_R}" fill="none" stroke-width="5" stroke-linecap="round" transform="rotate(-90)" stroke-dasharray="${DIAL_C.toFixed(1)}" stroke-dashoffset="${(DIAL_C*(1-frac)).toFixed(1)}"/>
     <circle class="needle" r="7" cx="${(Math.sin(ang)*DIAL_R).toFixed(1)}" cy="${(-Math.cos(ang)*DIAL_R).toFixed(1)}"/></svg>`;
 }
-function updateDial(el, ms){
-  const frac = (ms % 3600000) / 3600000, ang = frac * 2 * Math.PI;
+function updateDial(el, ms, bs){
+  const frac = dialFrac(ms, bs), ang = frac * 2 * Math.PI;
   const p = el.querySelector('.prog'), n = el.querySelector('.needle');
   if (p) p.setAttribute('stroke-dashoffset', (DIAL_C*(1-frac)).toFixed(1));
   if (n){ n.setAttribute('cx', (Math.sin(ang)*DIAL_R).toFixed(1)); n.setAttribute('cy', (-Math.cos(ang)*DIAL_R).toFixed(1)); }
@@ -485,13 +510,16 @@ function renderFokus(){
   const quest = questById(cur.questId);
   const running = S.activeTimer && S.activeTimer.taskId === cur.id;
   const sp = spentMs(cur.id);
+  const bs = running ? blockState() : null;
+  const stateTxt = bs ? (bs.over ? 'Block um, Pause?' : 'noch ' + Math.ceil(bs.left/60000) + ' min') : (running ? 'läuft' : (sp ? 'pausiert' : 'bereit'));
   return `<div class="focus">
     <div class="fq"><span class="pin" style="background:${taskColor(cur)};box-shadow:none"></span>${quest && !quest.archived ? esc(quest.name) : 'Ohne Quest'}</div>
     ${cur.areaId && areaById(cur.areaId) ? `<div class="fq" style="color:${areaById(cur.areaId).color};font-weight:600;margin-bottom:-14px">${esc(areaById(cur.areaId).name)}</div>` : ''}
     <h1 class="ft">${esc(cur.title)}</h1>
     ${dueChip(cur) ? `<div style="margin-top:-10px">${dueChip(cur)}</div>` : ''}
-    <div class="dial ${running?'run':''}" data-dial="${cur.id}">${dialSvg(sp)}
-      <div class="readout"><span class="clock live-clock" data-task="${cur.id}">${fmtClock(sp)}</span><span class="state">${running ? 'läuft' : (sp ? 'pausiert' : 'bereit')}</span></div></div>
+    <div class="dial ${running?'run':''} ${bs && bs.over ? 'over' : ''}" data-dial="${cur.id}">${dialSvg(sp, bs)}
+      <div class="readout"><span class="clock live-clock" data-task="${cur.id}">${fmtClock(sp)}</span><span class="state" data-blockstate>${stateTxt}</span></div></div>
+    <div class="blocks" role="group" aria-label="Zeitblock"><span>Zeitblock</span>${[0,25,30,45,60].map(m => `<button data-act="block" data-v="${m}" class="${blockMin===m?'on':''}" aria-pressed="${blockMin===m}">${m ? m + ' min' : 'Aus'}</button>`).join('')}</div>
     <div class="facts">
       ${running ? `<button class="btn" data-act="pause">Pausieren</button>` : `<button class="btn pri" data-act="start" data-id="${cur.id}">${sp ? 'Weiter' : 'Starten'}</button>`}
       <button class="btn ok" data-act="complete" data-id="${cur.id}">Erledigt</button>
@@ -560,11 +588,13 @@ function renderWoche(){
     <div class="dl">${hist.map(x => `<span class="${x.m===ui.week?'today':''}">${parseDk(x.m).getDate()}.${parseDk(x.m).getMonth()+1}.</span>`).join('')}</div></section>`;
 
   const r = S.reflections[ui.week] || {};
-  h += `<section><h2><span>Rückblick</span><small>${r.savedAt ? 'Gespeichert' : 'etwa 20 Minuten'}</small></h2>
+  h += `<section><h2><span>Rückblick</span><small>${r.savedAt ? 'Gespeichert' : 'etwa 10 Minuten'}</small></h2>
     <div class="field"><p class="prompt">Was lief gut?</p><textarea data-refl="good">${esc(r.good)}</textarea></div>
-    <div class="field"><p class="prompt">Was lief schlecht, und warum?</p><textarea data-refl="bad">${esc(r.bad)}</textarea></div>
     <div class="field"><p class="prompt">Was ändere ich nächste Woche konkret?</p><textarea data-refl="improve">${esc(r.improve)}</textarea></div>
-    <div class="field"><p class="prompt">Passen meine Ziele und mein Alltag noch zusammen?</p><textarea data-refl="coherence">${esc(r.coherence)}</textarea></div>
+    <details class="more" ${r.bad || r.coherence ? 'open' : ''}><summary>Mehr Fragen (optional)</summary>
+      <div class="field"><p class="prompt">Was lief schlecht, und warum?</p><textarea data-refl="bad">${esc(r.bad)}</textarea></div>
+      <div class="field"><p class="prompt">Passen meine Ziele und mein Alltag noch zusammen?</p><textarea data-refl="coherence">${esc(r.coherence)}</textarea></div>
+    </details>
     <p class="hint">Wird beim Tippen gespeichert.</p></section>`;
   return h;
 }
@@ -643,18 +673,33 @@ document.addEventListener('click', e => {
     case 'tab': ui.view = el.dataset.v; if (ui.view === 'heute') ui.day = ui.day || todayKey(); render(); window.scrollTo(0,0); break;
     case 'day': { const v = +el.dataset.v; ui.day = v === 0 ? todayKey() : addDays(ui.day, v); render(); break; }
     case 'week': { const v = +el.dataset.v; ui.week = v === 0 ? mondayOf(todayKey()) : addDays(ui.week, 7*v); render(); break; }
+    case 'longKeep': closeSheet(); break;
+    case 'longFix': {
+      const a = S.activeTimer; if (!a) { closeSheet(); break; }
+      const min = Math.max(0, +($('#longMin').value || 0));
+      const t = S.tasks.find(x => x.id === a.taskId);
+      if (min > 0) S.sessions.push({ id:uid(), taskId:a.taskId, questId: t ? (t.questId||null) : null, areaId: t ? (t.areaId||null) : null, title: t ? t.title : '', start:a.start, end: a.start + min*60000 });
+      S.activeTimer = null; closeSheet(); commit(); toast('Zeit korrigiert: ' + min + ' min'); break;
+    }
+    case 'block': {
+      blockMin = +el.dataset.v; try { localStorage.setItem(LS_BLOCK, String(blockMin)); } catch(_){}
+      if (blockMin && 'Notification' in window && Notification.permission === 'default') { try { Notification.requestPermission(); } catch(_){} }
+      if (S.activeTimer) blockAlerted = (blockState() && blockState().over) ? S.activeTimer.start : null;
+      render(); break;
+    }
     case 'adda': addArea = addArea === id ? null : id; render(); setTimeout(() => { const i = $('#addInput'); if (i) i.focus(); }, 0); break;
     case 'wmode': ui.weekMode = el.dataset.v; render(); break;
     case 'qwork': {
       const free = () => { const used = S.quests.filter(q => !q.archived).map(q => q.color); return COLORS.find(c => !used.includes(c)) || COLORS[0]; };
       if (!S.quests.some(q => !q.archived && q.name === 'Anfragen')) S.quests.push({ id:uid(), name:'Anfragen', goal:'Anfragen der Fachbereiche zuverlässig und zügig erledigen', weeklyGoalH:25, color: free(), archived:false });
       if (!S.quests.some(q => !q.archived && q.name === 'Optimierung')) S.quests.push({ id:uid(), name:'Optimierung', goal:'Wiederkehrende Anfragen vereinfachen, Abläufe dokumentieren', weeklyGoalH:3, color: free(), archived:false });
+      addQuest = undefined; try { localStorage.removeItem(LS_ADDQ); } catch(_){}
       commit(); toast('Quests für die Arbeit angelegt'); break;
     }
     case 'acolor': { const a = areaById(id); if (a){ a.color = el.dataset.c; commit(); } break; }
     case 'aarch': { const a = areaById(id); if (a){ a.archived = true; commit(); } break; }
     case 'arestore': S.areas.forEach(a => { a.archived = false; }); commit(); break;
-    case 'addq': addQuest = id || null; render(); setTimeout(() => { const i = $('#addInput'); if (i) i.focus(); }, 0); break;
+    case 'addq': addQuest = id || null; try { localStorage.setItem(LS_ADDQ, id || 'none'); } catch(_){} render(); setTimeout(() => { const i = $('#addInput'); if (i) i.focus(); }, 0); break;
     case 'done': toggleDone(id); break;
     case 'up': moveTask(id, -1); break;
     case 'down': moveTask(id, 1); break;
@@ -779,7 +824,11 @@ document.addEventListener('change', e => {
 setInterval(() => {
   if (!S.activeTimer) return;
   document.querySelectorAll('.live-clock').forEach(el => { el.textContent = fmtClock(spentMs(el.dataset.task)); });
-  document.querySelectorAll('[data-dial]').forEach(el => updateDial(el, spentMs(el.dataset.dial)));
+  const bs = blockState();
+  document.querySelectorAll('[data-dial]').forEach(el => { updateDial(el, spentMs(el.dataset.dial), bs); el.classList.toggle('over', !!(bs && bs.over)); });
+  document.querySelectorAll('[data-blockstate]').forEach(el => { el.textContent = bs ? (bs.over ? 'Block um, Pause?' : 'noch ' + Math.ceil(bs.left/60000) + ' min') : 'läuft'; });
+  if (bs && bs.over && blockAlerted !== S.activeTimer.start){ blockAlerted = S.activeTimer.start; blockAlarm(); }
+  if (Date.now() - S.activeTimer.start > LONG_MS) checkLongTimer();
   document.querySelectorAll('.live').forEach(el => {
     el.textContent = el.dataset.seg ? fmtDur(Date.now() - S.activeTimer.start) : fmtDur(spentMs(el.dataset.task));
   });
@@ -787,7 +836,48 @@ setInterval(() => {
 
 // Tageswechsel erkennen
 let lastToday = todayKey();
-setInterval(() => { const t = todayKey(); if (t !== lastToday){ if (ui.day === lastToday) ui.day = t; lastToday = t; ui.week = mondayOf(t); render(); } }, 30000);
+setInterval(() => { const t = todayKey(); if (t !== lastToday){ if (ui.day === lastToday) ui.day = t; lastToday = t; ui.week = mondayOf(t); carryOver(); render(); } }, 30000);
+
+/* ---------- Vergessener Timer ---------- */
+const LONG_MS = 2 * 3600000;
+let longAsked = null;
+function checkLongTimer(){
+  const a = S.activeTimer; if (!a || longAsked === a.start) return;
+  const el = Date.now() - a.start; if (el < LONG_MS) return;
+  if ($('#sheet').innerHTML) return;
+  longAsked = a.start;
+  const t = S.tasks.find(x => x.id === a.taskId);
+  const def = Math.min(60, Math.round(el / 60000));
+  $('#sheet').innerHTML = `<div class="sheet-bg"><div class="sheet" data-stop role="dialog" aria-label="Timer prüfen">
+    <h3>Läuft der Timer noch?</h3>
+    <p style="margin:0 0 14px">Der Timer für „${esc(t ? t.title : 'Aufgabe')}“ läuft seit ${hm(a.start)} Uhr, also ${fmtDur(el)}. Lief er wirklich die ganze Zeit?</p>
+    <div class="field"><label for="longMin">Tatsächlich gearbeitet (Minuten)</label><input type="number" id="longMin" min="0" step="5" inputmode="numeric" value="${def}"></div>
+    <div class="btns">
+      <button class="btn pri" data-act="longFix">Korrigieren und stoppen</button>
+      <button class="btn" data-act="longKeep">Ja, weiterlaufen lassen</button>
+    </div></div></div>`;
+}
+
+/* ---------- Zeitblock im Fokus (optional, pro Gerät) ---------- */
+const LS_BLOCK = 'kompass-block';
+let blockMin = +(localStorage.getItem(LS_BLOCK) || 0), blockAlerted = null;
+function blockState(){
+  const a = S.activeTimer; if (!blockMin || !a) return null;
+  const el = Date.now() - a.start, len = blockMin * 60000;
+  return { el, len, left: len - el, over: el >= len };
+}
+function beep(){
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    [0, 0.25, 0.5].forEach(t => { const o = ctx.createOscillator(), g = ctx.createGain(); o.frequency.value = 880; g.gain.setValueAtTime(0.0001, ctx.currentTime + t); g.gain.exponentialRampToValueAtTime(0.25, ctx.currentTime + t + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + t + 0.2); o.connect(g).connect(ctx.destination); o.start(ctx.currentTime + t); o.stop(ctx.currentTime + t + 0.22); });
+  } catch(_){}
+}
+function blockAlarm(){
+  const t = S.tasks.find(x => x.id === S.activeTimer.taskId);
+  beep(); try { navigator.vibrate && navigator.vibrate([200, 100, 200]); } catch(_){}
+  toast(blockMin + ' Minuten um. Kurz Pause machen?');
+  try { if ('Notification' in window && Notification.permission === 'granted' && document.visibilityState !== 'visible') new Notification('Kompass', { body: blockMin + ' Minuten um: ' + (t ? t.title : ''), icon: '/icon-192.png' }); } catch(_){}
+}
 
 /* ---------- Sync ---------- */
 const syncState = { code: localStorage.getItem(LS_CODE), id: null, status: 'ok', error: '', lastSync: 0 };
@@ -855,13 +945,13 @@ async function connectSync(code){
     toast('Verbindung fehlgeschlagen: ' + (e.message || e));
   }
 }
-document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') syncNow(false); });
+document.addEventListener('visibilitychange', async () => { if (document.visibilityState === 'visible'){ await syncNow(false); carryOver(); checkLongTimer(); } });
 window.addEventListener('online', () => syncNow(false));
 setInterval(() => { if (document.visibilityState === 'visible' && !pushing && syncState.status !== 'busy') syncNow(false); }, 60000);
 
 /* ---------- Start ---------- */
 render();
-if (syncState.code) syncNow(false);
+(async () => { if (syncState.code) await syncNow(false); carryOver(); checkLongTimer(); })();
 if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('/sw.js').catch(()=>{});
 </script>
 </body>
