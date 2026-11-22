@@ -4,8 +4,8 @@
   "description": "Daily Planning mit Quests, Fokus-Timer und Wochen-Review",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#f5f5f5",
-  "theme_color": "#f5f5f5",
+  "background_color": "#EDF1F2",
+  "theme_color": "#EDF1F2",
   "lang": "de",
   "icons": [
     { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
