@@ -93,6 +93,8 @@ ol.tasks,ul.tasks{list-style:none;margin:0;padding:0}
 
 /* Logbuch-Zeitleiste */
 .log{list-style:none;margin:6px 0 0;padding:0 0 0 0;position:relative}
+.log li.edit{cursor:pointer;border-radius:8px}
+.log li.edit:hover{background:var(--rule2)}
 .log li{display:grid;grid-template-columns:96px 1fr auto;gap:12px;align-items:baseline;padding:7px 0 7px 18px;position:relative;font-size:15px}
 .log li::before{content:"";position:absolute;left:3px;top:0;bottom:0;width:1px;background:var(--rule)}
 .log li::after{content:"";position:absolute;left:0;top:14px;width:7px;height:7px;border-radius:50%;background:var(--c,var(--rule))}
@@ -460,7 +462,7 @@ function renderHeute(){
   // Logbuch
   let log = daySessions.map(s => {
     const t2 = S.tasks.find(x => x.id === s.taskId); const q = questById(s.questId);
-    return `<li style="--c:${q ? q.color : 'var(--rule)'}"><span class="tm">${hm(s.start)}–${hm(s.end)}</span><span class="lt">${esc(t2 ? t2.title : s.title)}</span><span class="du">${fmtDur(s.end-s.start)}</span></li>`;
+    return `<li class="edit" data-act="editsess" data-id="${s.id}" role="button" tabindex="0" aria-label="Eintrag bearbeiten" style="--c:${q ? q.color : 'var(--rule)'}"><span class="tm">${hm(s.start)}–${hm(s.end)}</span><span class="lt">${esc(t2 ? t2.title : s.title)}</span><span class="du">${fmtDur(s.end-s.start)}</span></li>`;
   }).join('');
   if (live){
     const at = S.tasks.find(x => x.id === S.activeTimer.taskId);
@@ -673,6 +675,19 @@ document.addEventListener('click', e => {
     case 'tab': ui.view = el.dataset.v; if (ui.view === 'heute') ui.day = ui.day || todayKey(); render(); window.scrollTo(0,0); break;
     case 'day': { const v = +el.dataset.v; ui.day = v === 0 ? todayKey() : addDays(ui.day, v); render(); break; }
     case 'week': { const v = +el.dataset.v; ui.week = v === 0 ? mondayOf(todayKey()) : addDays(ui.week, 7*v); render(); break; }
+    case 'editsess': openSession(id); break;
+    case 'sessSave': {
+      const se = S.sessions.find(x => x.id === id); if (!se) { closeSheet(); break; }
+      const [h, m] = ($('#sStart').value || hm(se.start)).split(':').map(Number);
+      const d = new Date(se.start); d.setHours(h, m, 0, 0);
+      const min = Math.max(1, +($('#sMin').value || 1));
+      se.start = d.getTime(); se.end = se.start + min * 60000;
+      closeSheet(); commit(); toast('Eintrag gespeichert'); break;
+    }
+    case 'sessDel': {
+      if (!confirm('Diesen Logbuch-Eintrag löschen? Die Zeit fällt auch aus der Statistik.')) break;
+      S.sessions = S.sessions.filter(x => x.id !== id); closeSheet(); commit(); toast('Eintrag gelöscht'); break;
+    }
     case 'longKeep': closeSheet(); break;
     case 'longFix': {
       const a = S.activeTimer; if (!a) { closeSheet(); break; }
@@ -765,6 +780,9 @@ document.addEventListener('click', e => {
   }
 });
 
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && e.target.matches && e.target.matches('li.edit[data-act=editsess]')) openSession(e.target.dataset.id);
+});
 document.addEventListener('submit', e => {
   const f = e.target.closest('[data-form]'); if (!f) return;
   e.preventDefault();
@@ -837,6 +855,24 @@ setInterval(() => {
 // Tageswechsel erkennen
 let lastToday = todayKey();
 setInterval(() => { const t = todayKey(); if (t !== lastToday){ if (ui.day === lastToday) ui.day = t; lastToday = t; ui.week = mondayOf(t); carryOver(); render(); } }, 30000);
+
+/* ---------- Logbuch-Eintrag bearbeiten ---------- */
+function openSession(id){
+  const se = S.sessions.find(x => x.id === id); if (!se) return;
+  const t = S.tasks.find(x => x.id === se.taskId);
+  const startHm = hm(se.start), min = Math.max(1, Math.round((se.end - se.start) / 60000));
+  $('#sheet').innerHTML = `<div class="sheet-bg" data-act="closeSheet"><div class="sheet" data-stop role="dialog" aria-label="Logbuch-Eintrag bearbeiten">
+    <h3>Logbuch-Eintrag</h3>
+    <p style="margin:0 0 14px;font-family:var(--serif)">${esc(t ? t.title : se.title)}</p>
+    <div class="two" style="grid-template-columns:1fr 1fr">
+      <div class="field"><label for="sStart">Beginn</label><input type="time" id="sStart" value="${startHm}"></div>
+      <div class="field"><label for="sMin">Dauer (Minuten)</label><input type="number" id="sMin" min="1" step="1" inputmode="numeric" value="${min}"></div>
+    </div>
+    <div class="btns">
+      <button class="btn pri" data-act="sessSave" data-id="${se.id}">Speichern</button>
+      <button class="btn quiet bad" data-act="sessDel" data-id="${se.id}">Eintrag löschen</button>
+    </div></div></div>`;
+}
 
 /* ---------- Vergessener Timer ---------- */
 const LONG_MS = 2 * 3600000;
