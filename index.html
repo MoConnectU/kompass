@@ -789,7 +789,7 @@ function calBlocksForDay(day, a){
       style="top:${top.toFixed(1)}px;height:${h.toFixed(1)}px;left:calc(${left}% + 2px);width:calc(${w}% - 4px);--c:${color}">
       <div class="ct">${ar ? `<b style="color:${ar.color}">${esc(ar.name)}:</b> ` : ''}${esc(title)}</div>
       ${short ? '' : `<div class="cm">${hm(it.sess.start)}–${it.live ? 'jetzt' : hm(it.sess.end)}</div>`}
-      ${!it.live && it.sess.exportedAt ? `<span class="cx" title="${it.sess.editedAfterExport ? 'Nach dem Export geändert' : 'Exportiert'}">${it.sess.editedAfterExport ? '✎' : '✓'}</span>` : ''}
+      ${!it.live && expOf(it.sess)[deviceTarget()] ? `<span class="cx" title="${isStale(it.sess, deviceTarget()) ? 'Nach dem Export geändert' : 'Exportiert: ' + Object.keys(expOf(it.sess)).map(k => TARGETS[k]).join(', ')}">${isStale(it.sess, deviceTarget()) ? '✎' : '✓'}</span>` : ''}
       ${it.live ? '' : '<div class="rz" data-rz="1" aria-hidden="true"></div>'}
     </div>`;
   }).join('');
@@ -811,12 +811,13 @@ function renderKalender(){
         ${d===t && nowMin >= a*60 && nowMin <= b*60 ? `<div class="cnow" style="top:${nowTop}px"></div>` : ''}
         ${calBlocksForDay(d, a)}</div>` };
   });
-  const pend = pendingExport().length;
+  const pH = pendingExport('handy').length, pA = pendingExport('arbeit').length;
+  const exportUi = isIOS()
+    ? `<div class="btns" style="margin:0">${pH ? `<button class="btn pri sm" data-act="exportIos">In iPhone-Kalender (${pH} neu)</button>` : '<span class="hint" style="margin:0">iPhone-Kalender aktuell ✓</span>'}
+       ${pA ? `<button class="btn sm" data-act="exportIcs">Für Outlook teilen (${pA} neu)</button>` : ''}</div>`
+    : (pA ? `<button class="btn pri sm" data-act="exportIcs">Nach Outlook exportieren (${pA} neu)</button>` : '<span class="hint" style="margin:0">Outlook aktuell ✓</span>');
   return `<div class="caltools"><div class="seg" role="tablist" aria-label="Ansicht"><button role="tab" aria-selected="${mode==='3'}" class="${mode==='3'?'on':''}" data-act="calmode" data-v="3">3 Tage</button><button role="tab" aria-selected="${mode==='7'}" class="${mode==='7'?'on':''}" data-act="calmode" data-v="7">Woche</button></div>
-    ${pend ? (isIOS()
-      ? `<div class="btns" style="margin:0"><button class="btn pri sm" data-act="exportIos">In iPhone-Kalender (${pend} neu)</button><button class="btn sm" data-act="exportIcs">Als Datei teilen</button></div>`
-      : `<button class="btn pri sm" data-act="exportIcs">Nach Outlook exportieren (${pend} neu)</button>`)
-      : '<span class="hint" style="margin:0">Alle Einträge sind exportiert ✓</span>'}</div>
+    ${exportUi}</div>
     <p class="hint" style="margin:2px 0 10px">${isTouch() ? 'Lange drücken und ziehen zum Verschieben. Antippen zum Bearbeiten, freie Stelle antippen zum Nachtragen.' : 'Blöcke ziehen zum Verschieben, unteren Rand ziehen für die Länge. Klick zum Bearbeiten, Klick auf eine freie Stelle zum Nachtragen.'}</p>
     <div class="cal" style="--cols:${days.length}" data-a="${a}">
       <div class="chead"><div class="cgut"></div>${cols.map(c => c.head).join('')}</div>
@@ -828,7 +829,13 @@ function renderKalender(){
 const isTouch = () => window.matchMedia('(pointer: coarse)').matches;
 
 /* ---------- Export nach Outlook (.ics) ---------- */
-const pendingExport = () => S.sessions.filter(x => !x.exportedAt && x.end > x.start).sort((a,b) => a.start - b.start);
+/* Exportziele: jedes getrennt markiert, jeder Eintrag pro Ziel nur einmal */
+const TARGETS = { handy:'iPhone-Kalender', arbeit:'Outlook (Arbeit)' };
+const expOf = se => se.exp || (se.exportedAt ? { arbeit: se.exportedAt } : {});
+const anyExported = se => Object.keys(expOf(se)).length > 0;
+const isStale = (se, tg) => !!(se.editedAfterExport && expOf(se)[tg] && se.editedAfterExport > expOf(se)[tg]);
+const pendingExport = tg => S.sessions.filter(x => !expOf(x)[tg] && x.end > x.start).sort((a,b) => a.start - b.start);
+const deviceTarget = () => isIOS() ? 'handy' : 'arbeit';
 function icsDate(ts){ const d = new Date(ts); return d.getUTCFullYear() + pad(d.getUTCMonth()+1) + pad(d.getUTCDate()) + 'T' + pad(d.getUTCHours()) + pad(d.getUTCMinutes()) + pad(d.getUTCSeconds()) + 'Z'; }
 const icsText = v => String(v ?? '').replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n');
 function icsFold(line){
@@ -857,14 +864,14 @@ function buildIcs(list){
 }
 const isIOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 function exportName(){ const d = new Date(); return 'Kompass-' + dk(d) + '-' + pad(d.getHours()) + pad(d.getMinutes()) + '.ics'; }
-function markExported(list){
+function markExported(list, tg){
   const ts = Date.now();
-  list.forEach(se => { se.exportedAt = ts; se.exportSeq = (se.exportSeq || 0) + 1; delete se.editedAfterExport; });
-  commit(); toast(list.length + (list.length === 1 ? ' Eintrag' : ' Einträge') + ' als exportiert markiert');
+  list.forEach(se => { se.exp = Object.assign({}, expOf(se), { [tg]: ts }); delete se.exportedAt; se.exportSeq = (se.exportSeq || 0) + 1; });
+  commit(); toast(list.length + (list.length === 1 ? ' Eintrag' : ' Einträge') + ' für ' + TARGETS[tg] + ' markiert');
 }
 let pendingConfirm = null;
 function askAdded(list){
-  pendingConfirm = list;
+  pendingConfirm = { list, tg:'handy' };
   $('#sheet').innerHTML = `<div class="sheet-bg"><div class="sheet" data-stop role="dialog" aria-label="Export bestätigen">
     <h3>Im Kalender hinzugefügt?</h3>
     <p style="margin:0 0 14px">Tippe im Kalender-Fenster auf „Alle hinzufügen“. Danach hier bestätigen, damit diese ${list.length} ${list.length === 1 ? 'Eintrag' : 'Einträge'} nicht noch einmal exportiert ${list.length === 1 ? 'wird' : 'werden'}.</p>
@@ -873,7 +880,7 @@ function askAdded(list){
 }
 /** iPhone: Termine direkt in den iOS-Kalender */
 async function exportToIosCalendar(){
-  const list = pendingExport();
+  const list = pendingExport('handy');
   if (!list.length){ toast('Keine neuen Einträge zum Exportieren'); return; }
   const w = window.open('', '_blank'); // sofort öffnen, sonst blockiert iOS das Fenster
   try {
@@ -886,12 +893,12 @@ async function exportToIosCalendar(){
 }
 /** Datei: am Computer herunterladen, am Handy über das Teilen-Menü */
 async function exportOutlook(){
-  const list = pendingExport();
+  const tg = 'arbeit', list = pendingExport(tg);
   if (!list.length){ toast('Keine neuen Einträge zum Exportieren'); return; }
   const name = exportName(), ics = buildIcs(list);
   const file = typeof File === 'function' ? new File([ics], name, { type:'text/calendar' }) : null;
   if (isTouch() && file && navigator.canShare && navigator.canShare({ files:[file] })){
-    try { await navigator.share({ files:[file], title:'Kompass-Export' }); markExported(list); }
+    try { await navigator.share({ files:[file], title:'Kompass-Export für Outlook' }); markExported(list, tg); }
     catch(e){ toast(e && e.name === 'AbortError' ? 'Export abgebrochen, nichts markiert' : 'Teilen nicht möglich: ' + (e && e.message || e)); }
     return;
   }
@@ -899,9 +906,9 @@ async function exportOutlook(){
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name;
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 2000);
-  markExported(list);
+  markExported(list, tg);
 }
-const markEdited = se => { if (se.exportedAt) se.editedAfterExport = Date.now(); };
+const markEdited = se => { if (anyExported(se)) se.editedAfterExport = Date.now(); };
 
 /* ---------- Drag & Drop ---------- */
 let drag = null, calJustDragged = false;
@@ -1058,15 +1065,15 @@ document.addEventListener('click', e => {
     }
     case 'exportIcs': exportOutlook(); break;
     case 'exportIos': exportToIosCalendar(); break;
-    case 'icsYes': { const l = pendingConfirm || []; pendingConfirm = null; closeSheet(); if (l.length) markExported(l); break; }
+    case 'icsYes': { const pc = pendingConfirm; pendingConfirm = null; closeSheet(); if (pc && pc.list.length) markExported(pc.list, pc.tg); break; }
     case 'icsNo': pendingConfirm = null; closeSheet(); toast('Nichts markiert, du kannst erneut exportieren'); break;
     case 'reexport': {
       const se = S.sessions.find(x => x.id === id); if (!se) break;
-      delete se.exportedAt; delete se.editedAfterExport; closeSheet(); commit();
+      delete se.exportedAt; delete se.exp; delete se.editedAfterExport; closeSheet(); commit();
       toast('Wird beim nächsten Export erneut übertragen'); break;
     }
     case 'sessDel': {
-      if (!confirm('Diesen Logbuch-Eintrag löschen? Die Zeit fällt auch aus der Statistik.' + ((S.sessions.find(x => x.id === id)||{}).exportedAt ? ' In Outlook bleibt der Termin bestehen und muss dort gelöscht werden.' : ''))) break;
+      if (!confirm('Diesen Logbuch-Eintrag löschen? Die Zeit fällt auch aus der Statistik.' + (anyExported(S.sessions.find(x => x.id === id)||{}) ? ' In den Kalendern, in die er exportiert wurde, bleibt der Termin bestehen und muss dort gelöscht werden.' : ''))) break;
       S.sessions = S.sessions.filter(x => x.id !== id); closeSheet(); commit(); toast('Eintrag gelöscht'); break;
     }
     case 'longKeep': closeSheet(); break;
@@ -1252,9 +1259,9 @@ function openSession(id){
       <div class="field"><label for="sStart">Beginn</label><input type="time" id="sStart" value="${startHm}"></div>
       <div class="field"><label for="sMin">Dauer (Minuten)</label><input type="number" id="sMin" min="1" step="1" inputmode="numeric" value="${min}"></div>
     </div>
-    ${se.exportedAt ? `<p class="hint" style="margin:0 0 12px">${se.editedAfterExport
-      ? `Nach dem Export geändert, in Outlook steht noch die alte Zeit. <button class="btn quiet sm" data-act="reexport" data-id="${se.id}" style="padding:2px 6px">Erneut exportieren</button>`
-      : `Exportiert am ${shortDate(dk(new Date(se.exportedAt)))} um ${hm(se.exportedAt)} Uhr. <button class="btn quiet sm" data-act="reexport" data-id="${se.id}" style="padding:2px 6px">Erneut exportieren</button>`}</p>` : ''}
+    ${anyExported(se) ? `<div class="hint" style="margin:0 0 12px">${Object.keys(TARGETS).map(k => { const at = expOf(se)[k];
+        return `<div>${TARGETS[k]}: ${at ? (isStale(se, k) ? 'exportiert, danach geändert' : 'exportiert am ' + shortDate(dk(new Date(at))) + ' um ' + hm(at) + ' Uhr') : 'noch nicht exportiert'}</div>`; }).join('')}
+      <button class="btn quiet sm" data-act="reexport" data-id="${se.id}" style="padding:2px 6px;margin-top:4px">Überall erneut exportieren</button></div>` : ''}
     <div class="btns">
       <button class="btn pri" data-act="sessSave" data-id="${se.id}">Speichern</button>
       <button class="btn quiet bad" data-act="sessDel" data-id="${se.id}">Eintrag löschen</button>
