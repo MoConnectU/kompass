@@ -789,7 +789,7 @@ function calBlocksForDay(day, a){
       style="top:${top.toFixed(1)}px;height:${h.toFixed(1)}px;left:calc(${left}% + 2px);width:calc(${w}% - 4px);--c:${color}">
       <div class="ct">${ar ? `<b style="color:${ar.color}">${esc(ar.name)}:</b> ` : ''}${esc(title)}</div>
       ${short ? '' : `<div class="cm">${hm(it.sess.start)}–${it.live ? 'jetzt' : hm(it.sess.end)}</div>`}
-      ${!it.live && it.sess.exportedAt ? `<span class="cx" title="${it.sess.editedAfterExport ? 'Nach dem Export geändert' : 'In Outlook exportiert'}">${it.sess.editedAfterExport ? '✎' : '✓'}</span>` : ''}
+      ${!it.live && it.sess.exportedAt ? `<span class="cx" title="${it.sess.editedAfterExport ? 'Nach dem Export geändert' : 'Exportiert'}">${it.sess.editedAfterExport ? '✎' : '✓'}</span>` : ''}
       ${it.live ? '' : '<div class="rz" data-rz="1" aria-hidden="true"></div>'}
     </div>`;
   }).join('');
@@ -813,7 +813,10 @@ function renderKalender(){
   });
   const pend = pendingExport().length;
   return `<div class="caltools"><div class="seg" role="tablist" aria-label="Ansicht"><button role="tab" aria-selected="${mode==='3'}" class="${mode==='3'?'on':''}" data-act="calmode" data-v="3">3 Tage</button><button role="tab" aria-selected="${mode==='7'}" class="${mode==='7'?'on':''}" data-act="calmode" data-v="7">Woche</button></div>
-    ${pend ? `<button class="btn pri sm" data-act="exportIcs">Nach Outlook exportieren (${pend} neu)</button>` : '<span class="hint" style="margin:0">Alle Einträge sind in Outlook exportiert ✓</span>'}</div>
+    ${pend ? (isIOS()
+      ? `<div class="btns" style="margin:0"><button class="btn pri sm" data-act="exportIos">In iPhone-Kalender (${pend} neu)</button><button class="btn sm" data-act="exportIcs">Als Datei teilen</button></div>`
+      : `<button class="btn pri sm" data-act="exportIcs">Nach Outlook exportieren (${pend} neu)</button>`)
+      : '<span class="hint" style="margin:0">Alle Einträge sind exportiert ✓</span>'}</div>
     <p class="hint" style="margin:2px 0 10px">${isTouch() ? 'Lange drücken und ziehen zum Verschieben. Antippen zum Bearbeiten, freie Stelle antippen zum Nachtragen.' : 'Blöcke ziehen zum Verschieben, unteren Rand ziehen für die Länge. Klick zum Bearbeiten, Klick auf eine freie Stelle zum Nachtragen.'}</p>
     <div class="cal" style="--cols:${days.length}" data-a="${a}">
       <div class="chead"><div class="cgut"></div>${cols.map(c => c.head).join('')}</div>
@@ -852,35 +855,51 @@ function buildIcs(list){
   L.push('END:VCALENDAR');
   return L.join('\r\n') + '\r\n';
 }
+const isIOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+function exportName(){ const d = new Date(); return 'Kompass-' + dk(d) + '-' + pad(d.getHours()) + pad(d.getMinutes()) + '.ics'; }
+function markExported(list){
+  const ts = Date.now();
+  list.forEach(se => { se.exportedAt = ts; se.exportSeq = (se.exportSeq || 0) + 1; delete se.editedAfterExport; });
+  commit(); toast(list.length + (list.length === 1 ? ' Eintrag' : ' Einträge') + ' als exportiert markiert');
+}
+let pendingConfirm = null;
+function askAdded(list){
+  pendingConfirm = list;
+  $('#sheet').innerHTML = `<div class="sheet-bg"><div class="sheet" data-stop role="dialog" aria-label="Export bestätigen">
+    <h3>Im Kalender hinzugefügt?</h3>
+    <p style="margin:0 0 14px">Tippe im Kalender-Fenster auf „Alle hinzufügen“. Danach hier bestätigen, damit diese ${list.length} ${list.length === 1 ? 'Eintrag' : 'Einträge'} nicht noch einmal exportiert ${list.length === 1 ? 'wird' : 'werden'}.</p>
+    <div class="btns"><button class="btn pri" data-act="icsYes">Ja, hinzugefügt</button><button class="btn quiet" data-act="icsNo">Nein, nicht übernommen</button></div>
+  </div></div>`;
+}
+/** iPhone: Termine direkt in den iOS-Kalender */
+async function exportToIosCalendar(){
+  const list = pendingExport();
+  if (!list.length){ toast('Keine neuen Einträge zum Exportieren'); return; }
+  const w = window.open('', '_blank'); // sofort öffnen, sonst blockiert iOS das Fenster
+  try {
+    const r = await fetch('/api/ics', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ ics: buildIcs(list) }) });
+    const j = await r.json(); if (!r.ok) throw new Error(j.error || r.status);
+    const link = '/api/ics?t=' + j.token;
+    if (w) w.location.href = link; else location.href = link;
+    askAdded(list);
+  } catch(e){ if (w) w.close(); toast('Export fehlgeschlagen: ' + (e.message || e)); }
+}
+/** Datei: am Computer herunterladen, am Handy über das Teilen-Menü */
 async function exportOutlook(){
   const list = pendingExport();
   if (!list.length){ toast('Keine neuen Einträge zum Exportieren'); return; }
-  const d = new Date();
-  const name = 'Kompass-' + dk(d) + '-' + pad(d.getHours()) + pad(d.getMinutes()) + '.ics';
-  const ics = buildIcs(list);
-  const markDone = () => {
-    const ts = Date.now();
-    list.forEach(se => { se.exportedAt = ts; se.exportSeq = (se.exportSeq || 0) + 1; delete se.editedAfterExport; });
-    commit(); toast(list.length + (list.length === 1 ? ' Eintrag' : ' Einträge') + ' exportiert');
-  };
-  // Handy/Tablet: Teilen-Menü (Mail, Dateien, Kalender, Outlook …)
+  const name = exportName(), ics = buildIcs(list);
   const file = typeof File === 'function' ? new File([ics], name, { type:'text/calendar' }) : null;
   if (isTouch() && file && navigator.canShare && navigator.canShare({ files:[file] })){
-    try {
-      await navigator.share({ files:[file], title:'Kompass-Export' });
-      markDone(); // erst nach erfolgreichem Teilen als exportiert markieren
-    } catch(e){
-      if (e && e.name === 'AbortError') toast('Export abgebrochen, nichts markiert');
-      else toast('Teilen nicht möglich: ' + (e && e.message || e));
-    }
+    try { await navigator.share({ files:[file], title:'Kompass-Export' }); markExported(list); }
+    catch(e){ toast(e && e.name === 'AbortError' ? 'Export abgebrochen, nichts markiert' : 'Teilen nicht möglich: ' + (e && e.message || e)); }
     return;
   }
-  // Computer: Datei herunterladen
   const blob = new Blob([ics], { type:'text/calendar;charset=utf-8' });
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name;
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 2000);
-  markDone();
+  markExported(list);
 }
 const markEdited = se => { if (se.exportedAt) se.editedAfterExport = Date.now(); };
 
@@ -1038,6 +1057,9 @@ document.addEventListener('click', e => {
       closeSheet(); commit(); toast('Eintrag gespeichert'); break;
     }
     case 'exportIcs': exportOutlook(); break;
+    case 'exportIos': exportToIosCalendar(); break;
+    case 'icsYes': { const l = pendingConfirm || []; pendingConfirm = null; closeSheet(); if (l.length) markExported(l); break; }
+    case 'icsNo': pendingConfirm = null; closeSheet(); toast('Nichts markiert, du kannst erneut exportieren'); break;
     case 'reexport': {
       const se = S.sessions.find(x => x.id === id); if (!se) break;
       delete se.exportedAt; delete se.editedAfterExport; closeSheet(); commit();
@@ -1232,7 +1254,7 @@ function openSession(id){
     </div>
     ${se.exportedAt ? `<p class="hint" style="margin:0 0 12px">${se.editedAfterExport
       ? `Nach dem Export geändert, in Outlook steht noch die alte Zeit. <button class="btn quiet sm" data-act="reexport" data-id="${se.id}" style="padding:2px 6px">Erneut exportieren</button>`
-      : `In Outlook exportiert am ${shortDate(dk(new Date(se.exportedAt)))} um ${hm(se.exportedAt)} Uhr. <button class="btn quiet sm" data-act="reexport" data-id="${se.id}" style="padding:2px 6px">Erneut exportieren</button>`}</p>` : ''}
+      : `Exportiert am ${shortDate(dk(new Date(se.exportedAt)))} um ${hm(se.exportedAt)} Uhr. <button class="btn quiet sm" data-act="reexport" data-id="${se.id}" style="padding:2px 6px">Erneut exportieren</button>`}</p>` : ''}
     <div class="btns">
       <button class="btn pri" data-act="sessSave" data-id="${se.id}">Speichern</button>
       <button class="btn quiet bad" data-act="sessDel" data-id="${se.id}">Eintrag löschen</button>
