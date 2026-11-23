@@ -690,6 +690,11 @@ function renderQuests(){
       ? `<p style="margin:0 0 10px">${syncDot()} ${esc(syncTitle())}</p><div class="btns"><button class="btn" data-act="syncnow">Jetzt synchronisieren</button><button class="btn quiet bad" data-act="syncoff">Trennen</button></div>`
       : `<form data-form="sync" style="display:flex;gap:8px"><input type="password" id="syncInput" placeholder="Sync-Code" autocomplete="off"><button class="btn pri" type="submit">Verbinden</button></form>`}
   </section>
+  <section><h2>Kalender-Abo</h2>
+    <p class="hint">Abonniere deinen Kompass-Kalender auf dem iPhone (oder am Mac). Alle erfassten Zeiten erscheinen dort automatisch, Änderungen kommen nach spätestens etwa 15 bis 60 Minuten an. Beim Abonnieren kannst du den Kalender umbenennen, zum Beispiel in „Arbeit“.</p>
+    ${syncState.code ? `<div class="btns"><button class="btn pri" data-act="subscribe">Kalender abonnieren</button><button class="btn" data-act="copyFeed">Abo-Link kopieren</button></div>
+      <p class="hint" style="margin-top:8px">Wer den Link kennt, sieht deine Einträge. Gib ihn nicht weiter.</p>` : '<p class="hint">Verbinde zuerst oben den Sync, dann kannst du abonnieren.</p>'}
+  </section>
   <section><h2>Daten</h2><p class="hint">Trage keine Kundennamen oder vertraulichen Inhalte ein. Formuliere Anfragen neutral.</p><div class="btns"><button class="btn" data-act="export">Backup exportieren</button><label class="btn" style="cursor:pointer">Backup importieren<input type="file" accept="application/json" id="importFile" style="display:none"></label></div></section>`;
   return h;
 }
@@ -812,8 +817,9 @@ function renderKalender(){
         ${calBlocksForDay(d, a)}</div>` };
   });
   const pH = pendingExport('handy').length, pA = pendingExport('arbeit').length;
+  const subbed = syncState.code && localStorage.getItem(LS_SUB) === syncState.id;
   const exportUi = isIOS()
-    ? `<div class="btns" style="margin:0">${pH ? `<button class="btn pri sm" data-act="exportIos">In iPhone-Kalender (${pH} neu)</button>` : '<span class="hint" style="margin:0">iPhone-Kalender aktuell ✓</span>'}
+    ? `<div class="btns" style="margin:0">${subbed ? '<button class="btn quiet sm" data-act="subscribe" title="Erneut abonnieren">iPhone-Abo aktiv ✓</button>' : '<button class="btn pri sm" data-act="subscribe">iPhone-Kalender abonnieren</button>'}
        ${pA ? `<button class="btn sm" data-act="exportIcs">Für Outlook teilen (${pA} neu)</button>` : ''}</div>`
     : (pA ? `<button class="btn pri sm" data-act="exportIcs">Nach Outlook exportieren (${pA} neu)</button>` : '<span class="hint" style="margin:0">Outlook aktuell ✓</span>');
   return `<div class="caltools"><div class="seg" role="tablist" aria-label="Ansicht"><button role="tab" aria-selected="${mode==='3'}" class="${mode==='3'?'on':''}" data-act="calmode" data-v="3">3 Tage</button><button role="tab" aria-selected="${mode==='7'}" class="${mode==='7'?'on':''}" data-act="calmode" data-v="7">Woche</button></div>
@@ -877,6 +883,17 @@ function askAdded(list){
     <p style="margin:0 0 14px">Tippe im Kalender-Fenster auf „Alle hinzufügen“. Danach hier bestätigen, damit diese ${list.length} ${list.length === 1 ? 'Eintrag' : 'Einträge'} nicht noch einmal exportiert ${list.length === 1 ? 'wird' : 'werden'}.</p>
     <div class="btns"><button class="btn pri" data-act="icsYes">Ja, hinzugefügt</button><button class="btn quiet" data-act="icsNo">Nein, nicht übernommen</button></div>
   </div></div>`;
+}
+/* ---------- Kalender-Abo (webcal) ---------- */
+const LS_SUB = 'kompass-sub';
+async function feedUrl(){ const id = await getId(); return id ? location.host + '/api/feed?id=' + id : null; }
+async function subscribeCalendar(){
+  if (!syncState.code){ toast('Bitte zuerst unter Einrichten den Sync verbinden'); ui.view = 'quests'; render(); return; }
+  await syncNow(false); // aktuellen Stand auf den Server bringen
+  const u = await feedUrl(); if (!u) return;
+  try { localStorage.setItem(LS_SUB, syncState.id); } catch(_){}
+  location.href = 'webcal://' + u;
+  setTimeout(render, 500);
 }
 /** iPhone: Termine direkt in den iOS-Kalender */
 async function exportToIosCalendar(){
@@ -1065,6 +1082,8 @@ document.addEventListener('click', e => {
     }
     case 'exportIcs': exportOutlook(); break;
     case 'exportIos': exportToIosCalendar(); break;
+    case 'subscribe': subscribeCalendar(); break;
+    case 'copyFeed': feedUrl().then(u => { if (!u) return; const full = 'webcal://' + u; (navigator.clipboard ? navigator.clipboard.writeText(full) : Promise.reject()).then(() => toast('Abo-Link kopiert'), () => prompt('Abo-Link kopieren:', full)); }); break;
     case 'icsYes': { const pc = pendingConfirm; pendingConfirm = null; closeSheet(); if (pc && pc.list.length) markExported(pc.list, pc.tg); break; }
     case 'icsNo': pendingConfirm = null; closeSheet(); toast('Nichts markiert, du kannst erneut exportieren'); break;
     case 'reexport': {
