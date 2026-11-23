@@ -242,6 +242,9 @@ textarea{resize:vertical;min-height:80px;font-family:var(--serif);line-height:1.
 .cblk .rz::after{content:"";position:absolute;left:50%;bottom:2px;width:18px;height:2px;margin-left:-9px;border-radius:2px;background:var(--c);opacity:.5}
 .cblk.dragging{z-index:10;box-shadow:0 8px 24px rgba(10,20,30,.25);cursor:grabbing;opacity:.95}
 .cblk.live{border-left-style:dashed;cursor:pointer}
+.cblk .cx{position:absolute;top:2px;right:4px;font-size:10px;color:var(--c);opacity:.8}
+.caltools{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px}
+.caltools .seg{margin-bottom:0}
 @media (max-width:700px){.cblk{font-size:11px;padding:2px 4px}.cdh b{font-size:16px}}
 .toast{position:fixed;left:50%;bottom:calc(96px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:10px 16px;border-radius:999px;font-size:14px;z-index:30;white-space:nowrap}
 @media (min-width:760px){.sheet-bg{align-items:center}.sheet{border-radius:18px}.dateline h1{font-size:36px}}
@@ -786,6 +789,7 @@ function calBlocksForDay(day, a){
       style="top:${top.toFixed(1)}px;height:${h.toFixed(1)}px;left:calc(${left}% + 2px);width:calc(${w}% - 4px);--c:${color}">
       <div class="ct">${ar ? `<b style="color:${ar.color}">${esc(ar.name)}:</b> ` : ''}${esc(title)}</div>
       ${short ? '' : `<div class="cm">${hm(it.sess.start)}–${it.live ? 'jetzt' : hm(it.sess.end)}</div>`}
+      ${!it.live && it.sess.exportedAt ? `<span class="cx" title="${it.sess.editedAfterExport ? 'Nach dem Export geändert' : 'In Outlook exportiert'}">${it.sess.editedAfterExport ? '✎' : '✓'}</span>` : ''}
       ${it.live ? '' : '<div class="rz" data-rz="1" aria-hidden="true"></div>'}
     </div>`;
   }).join('');
@@ -807,7 +811,9 @@ function renderKalender(){
         ${d===t && nowMin >= a*60 && nowMin <= b*60 ? `<div class="cnow" style="top:${nowTop}px"></div>` : ''}
         ${calBlocksForDay(d, a)}</div>` };
   });
-  return `<div class="seg" role="tablist" aria-label="Ansicht"><button role="tab" aria-selected="${mode==='3'}" class="${mode==='3'?'on':''}" data-act="calmode" data-v="3">3 Tage</button><button role="tab" aria-selected="${mode==='7'}" class="${mode==='7'?'on':''}" data-act="calmode" data-v="7">Woche</button></div>
+  const pend = pendingExport().length;
+  return `<div class="caltools"><div class="seg" role="tablist" aria-label="Ansicht"><button role="tab" aria-selected="${mode==='3'}" class="${mode==='3'?'on':''}" data-act="calmode" data-v="3">3 Tage</button><button role="tab" aria-selected="${mode==='7'}" class="${mode==='7'?'on':''}" data-act="calmode" data-v="7">Woche</button></div>
+    ${pend ? `<button class="btn pri sm" data-act="exportIcs">Nach Outlook exportieren (${pend} neu)</button>` : '<span class="hint" style="margin:0">Alle Einträge sind in Outlook exportiert ✓</span>'}</div>
     <p class="hint" style="margin:2px 0 10px">${isTouch() ? 'Lange drücken und ziehen zum Verschieben. Antippen zum Bearbeiten, freie Stelle antippen zum Nachtragen.' : 'Blöcke ziehen zum Verschieben, unteren Rand ziehen für die Länge. Klick zum Bearbeiten, Klick auf eine freie Stelle zum Nachtragen.'}</p>
     <div class="cal" style="--cols:${days.length}" data-a="${a}">
       <div class="chead"><div class="cgut"></div>${cols.map(c => c.head).join('')}</div>
@@ -817,6 +823,49 @@ function renderKalender(){
     </div>`;
 }
 const isTouch = () => window.matchMedia('(pointer: coarse)').matches;
+
+/* ---------- Export nach Outlook (.ics) ---------- */
+const pendingExport = () => S.sessions.filter(x => !x.exportedAt && x.end > x.start).sort((a,b) => a.start - b.start);
+function icsDate(ts){ const d = new Date(ts); return d.getUTCFullYear() + pad(d.getUTCMonth()+1) + pad(d.getUTCDate()) + 'T' + pad(d.getUTCHours()) + pad(d.getUTCMinutes()) + pad(d.getUTCSeconds()) + 'Z'; }
+const icsText = v => String(v ?? '').replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n');
+function icsFold(line){
+  // Zeilen nach RFC 5545 bei 75 Bytes umbrechen (UTF-8-sicher)
+  const enc = new TextEncoder(); const out = []; let cur = '', len = 0;
+  for (const ch of line){ const n = enc.encode(ch).length; if (len + n > (out.length ? 74 : 75)){ out.push(cur); cur = ''; len = 0; } cur += ch; len += n; }
+  out.push(cur); return out.join('\r\n ');
+}
+function buildIcs(list){
+  const now = icsDate(Date.now());
+  const L = ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Kompass//Kompass Logbuch//DE','CALSCALE:GREGORIAN','METHOD:PUBLISH'];
+  for (const se of list){
+    const t = S.tasks.find(x => x.id === se.taskId);
+    const q = questById(se.questId !== undefined ? se.questId : (t && t.questId));
+    const ar = areaById(se.areaId !== undefined ? se.areaId : (t && t.areaId));
+    const title = (ar ? ar.name + ': ' : '') + (t ? t.title : (se.title || 'Eintrag'));
+    const desc = ['Aus Kompass erfasst (' + fmtDur(se.end - se.start) + ')', q ? 'Quest: ' + q.name : '', ar ? 'Fachbereich: ' + ar.name : '', t && t.notes ? 'Notizen: ' + t.notes : ''].filter(Boolean).join('\n');
+    L.push('BEGIN:VEVENT', 'UID:kompass-' + se.id + '@kompass', 'DTSTAMP:' + now, 'SEQUENCE:' + (se.exportSeq || 0),
+      'DTSTART:' + icsDate(se.start), 'DTEND:' + icsDate(se.end),
+      icsFold('SUMMARY:' + icsText(title)), icsFold('DESCRIPTION:' + icsText(desc)));
+    if (q) L.push(icsFold('CATEGORIES:' + icsText(q.name)));
+    L.push('TRANSP:OPAQUE', 'X-MICROSOFT-CDO-BUSYSTATUS:BUSY', 'END:VEVENT');
+  }
+  L.push('END:VCALENDAR');
+  return L.join('\r\n') + '\r\n';
+}
+function exportOutlook(){
+  const list = pendingExport();
+  if (!list.length){ toast('Keine neuen Einträge zum Exportieren'); return; }
+  const blob = new Blob([buildIcs(list)], { type:'text/calendar;charset=utf-8' });
+  const d = new Date();
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = 'Kompass-' + dk(d) + '-' + pad(d.getHours()) + pad(d.getMinutes()) + '.ics';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  const ts = Date.now();
+  list.forEach(se => { se.exportedAt = ts; se.exportSeq = (se.exportSeq || 0) + 1; delete se.editedAfterExport; });
+  commit(); toast(list.length + (list.length === 1 ? ' Eintrag' : ' Einträge') + ' exportiert');
+}
+const markEdited = se => { if (se.exportedAt) se.editedAfterExport = Date.now(); };
 
 /* ---------- Drag & Drop ---------- */
 let drag = null, calJustDragged = false;
@@ -880,11 +929,11 @@ function endDrag(e){
   if (!d.active) return; // war ein Klick
   calJustDragged = true; setTimeout(() => { calJustDragged = false; }, 50);
   if (d.resize && d.newEnd != null){
-    d.se.end = atMinute(dk(new Date(d.se.start)), d.newEnd);
+    d.se.end = atMinute(dk(new Date(d.se.start)), d.newEnd); markEdited(d.se);
     commit(); toast('Dauer geändert: ' + fmtDur(d.se.end - d.se.start));
   } else if (!d.resize && d.newStart != null){
     const len = d.se.end - d.se.start;
-    d.se.start = atMinute(d.newDay, d.newStart); d.se.end = d.se.start + len;
+    d.se.start = atMinute(d.newDay, d.newStart); d.se.end = d.se.start + len; markEdited(d.se);
     commit(); toast('Verschoben auf ' + hm(d.se.start) + ' Uhr' + (d.newDay !== d.origDay ? ', ' + WD[(parseDk(d.newDay).getDay()+6)%7] : ''));
   } else render();
 }
@@ -967,11 +1016,18 @@ document.addEventListener('click', e => {
       const [h, m] = ($('#sStart').value || hm(se.start)).split(':').map(Number);
       const d = new Date(se.start); d.setHours(h, m, 0, 0);
       const min = Math.max(1, +($('#sMin').value || 1));
+      if (se.start !== d.getTime() || se.end !== d.getTime() + min * 60000) markEdited(se);
       se.start = d.getTime(); se.end = se.start + min * 60000;
       closeSheet(); commit(); toast('Eintrag gespeichert'); break;
     }
+    case 'exportIcs': exportOutlook(); break;
+    case 'reexport': {
+      const se = S.sessions.find(x => x.id === id); if (!se) break;
+      delete se.exportedAt; delete se.editedAfterExport; closeSheet(); commit();
+      toast('Wird beim nächsten Export erneut übertragen'); break;
+    }
     case 'sessDel': {
-      if (!confirm('Diesen Logbuch-Eintrag löschen? Die Zeit fällt auch aus der Statistik.')) break;
+      if (!confirm('Diesen Logbuch-Eintrag löschen? Die Zeit fällt auch aus der Statistik.' + ((S.sessions.find(x => x.id === id)||{}).exportedAt ? ' In Outlook bleibt der Termin bestehen und muss dort gelöscht werden.' : ''))) break;
       S.sessions = S.sessions.filter(x => x.id !== id); closeSheet(); commit(); toast('Eintrag gelöscht'); break;
     }
     case 'longKeep': closeSheet(); break;
@@ -1157,6 +1213,9 @@ function openSession(id){
       <div class="field"><label for="sStart">Beginn</label><input type="time" id="sStart" value="${startHm}"></div>
       <div class="field"><label for="sMin">Dauer (Minuten)</label><input type="number" id="sMin" min="1" step="1" inputmode="numeric" value="${min}"></div>
     </div>
+    ${se.exportedAt ? `<p class="hint" style="margin:0 0 12px">${se.editedAfterExport
+      ? `Nach dem Export geändert, in Outlook steht noch die alte Zeit. <button class="btn quiet sm" data-act="reexport" data-id="${se.id}" style="padding:2px 6px">Erneut exportieren</button>`
+      : `In Outlook exportiert am ${shortDate(dk(new Date(se.exportedAt)))} um ${hm(se.exportedAt)} Uhr. <button class="btn quiet sm" data-act="reexport" data-id="${se.id}" style="padding:2px 6px">Erneut exportieren</button>`}</p>` : ''}
     <div class="btns">
       <button class="btn pri" data-act="sessSave" data-id="${se.id}">Speichern</button>
       <button class="btn quiet bad" data-act="sessDel" data-id="${se.id}">Eintrag löschen</button>
