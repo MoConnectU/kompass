@@ -852,18 +852,35 @@ function buildIcs(list){
   L.push('END:VCALENDAR');
   return L.join('\r\n') + '\r\n';
 }
-function exportOutlook(){
+async function exportOutlook(){
   const list = pendingExport();
   if (!list.length){ toast('Keine neuen Einträge zum Exportieren'); return; }
-  const blob = new Blob([buildIcs(list)], { type:'text/calendar;charset=utf-8' });
   const d = new Date();
-  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-  a.download = 'Kompass-' + dk(d) + '-' + pad(d.getHours()) + pad(d.getMinutes()) + '.ics';
+  const name = 'Kompass-' + dk(d) + '-' + pad(d.getHours()) + pad(d.getMinutes()) + '.ics';
+  const ics = buildIcs(list);
+  const markDone = () => {
+    const ts = Date.now();
+    list.forEach(se => { se.exportedAt = ts; se.exportSeq = (se.exportSeq || 0) + 1; delete se.editedAfterExport; });
+    commit(); toast(list.length + (list.length === 1 ? ' Eintrag' : ' Einträge') + ' exportiert');
+  };
+  // Handy/Tablet: Teilen-Menü (Mail, Dateien, Kalender, Outlook …)
+  const file = typeof File === 'function' ? new File([ics], name, { type:'text/calendar' }) : null;
+  if (isTouch() && file && navigator.canShare && navigator.canShare({ files:[file] })){
+    try {
+      await navigator.share({ files:[file], title:'Kompass-Export' });
+      markDone(); // erst nach erfolgreichem Teilen als exportiert markieren
+    } catch(e){
+      if (e && e.name === 'AbortError') toast('Export abgebrochen, nichts markiert');
+      else toast('Teilen nicht möglich: ' + (e && e.message || e));
+    }
+    return;
+  }
+  // Computer: Datei herunterladen
+  const blob = new Blob([ics], { type:'text/calendar;charset=utf-8' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name;
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 2000);
-  const ts = Date.now();
-  list.forEach(se => { se.exportedAt = ts; se.exportSeq = (se.exportSeq || 0) + 1; delete se.editedAfterExport; });
-  commit(); toast(list.length + (list.length === 1 ? ' Eintrag' : ' Einträge') + ' exportiert');
+  markDone();
 }
 const markEdited = se => { if (se.exportedAt) se.editedAfterExport = Date.now(); };
 
